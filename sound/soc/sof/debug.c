@@ -82,10 +82,38 @@ static ssize_t sof_dfsentry_read(struct file *file, char __user *buffer,
 	return count;
 }
 
+static ssize_t sof_dfsentry_write(struct file *file, const char __user *buffer,
+			  size_t count, loff_t *ppos)
+{
+	struct snd_sof_dfsentry_io *dfse = file->private_data;
+	struct snd_sof_dev *sdev = dfse->sdev;
+	int size, ret;
+
+	if(count > sizeof(sdev->pm_debug))
+		 return -EINVAL;
+
+	size = simple_write_to_buffer(&sdev->pm_debug, sizeof(sdev->pm_debug), ppos, buffer, count);
+
+	if (sdev->pm_debug == 2609) {
+		dev_dbg(sdev->dev, "ranjani: resuming audio dsp\n");
+		ret = sof_resume(sdev, true);
+	}
+	else {
+		dev_dbg(sdev->dev, "ranjani: suspending audio dsp\n");
+		ret = sof_suspend(sdev, true);
+	}
+
+	if (ret < 0)
+		return ret;
+
+	return size;
+}
+
 static const struct file_operations sof_dfs_fops = {
 	.open = sof_dfsentry_open,
 	.read = sof_dfsentry_read,
 	.llseek = default_llseek,
+	.write = sof_dfsentry_write,
 };
 
 int snd_sof_debugfs_create_item(struct snd_sof_dev *sdev,
@@ -116,6 +144,35 @@ int snd_sof_debugfs_create_item(struct snd_sof_dev *sdev,
 	return 0;
 }
 EXPORT_SYMBOL(snd_sof_debugfs_create_item);
+
+/* create FS entry for debug files to expose kernel memory */
+int snd_sof_debugfs_buf_create_item_writable(struct snd_sof_dev *sdev,
+			    void *base, size_t size,
+			    const char *name)
+{
+	struct snd_sof_dfsentry_buf *dfse;
+
+	if (!sdev)
+		return -EINVAL;
+
+	dfse = devm_kzalloc(sdev->dev, sizeof(*dfse), GFP_KERNEL);
+	if (!dfse)
+		return -ENOMEM;
+
+	dfse->buf = base;
+	dfse->size = size;
+	dfse->sdev = sdev;
+
+	dfse->dfsentry = debugfs_create_file(name, 0666, sdev->debugfs_root,
+					     dfse, &sof_dfs_fops);
+	if (!dfse->dfsentry) {
+		dev_err(sdev->dev, "error: cannot create debugfs entry.\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(snd_sof_debugfs_buf_create_item_writable);
 
 int snd_sof_dbg_init(struct snd_sof_dev *sdev)
 {

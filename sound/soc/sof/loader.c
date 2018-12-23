@@ -276,6 +276,13 @@ int snd_sof_run_firmware(struct snd_sof_dev *sdev)
 	init_waitqueue_head(&sdev->boot_wait);
 	sdev->boot_complete = false;
 
+	if (sdev->first_boot) {
+		snd_sof_debugfs_buf_create_item_writable(sdev, &sdev->pm_debug,
+							 sizeof(sdev->pm_debug),
+							 "pm_debug");
+ 		dev_dbg(sdev->dev, "created pm_debug debugfs entry\n");
+	}
+
 	dev_dbg(sdev->dev, "booting DSP firmware\n");
 
 	/* boot the firmware on the DSP */

@@ -21,8 +21,6 @@
 #include "ops.h"
 #include "sof-priv.h"
 
-#define RUNTIME_PM 1
-
 static int sof_restore_kcontrols(struct snd_sof_dev *sdev)
 {
 	struct snd_sof_control *scontrol = NULL;
@@ -243,10 +241,8 @@ static void sof_suspend_streams(struct snd_sof_dev *sdev)
 	}
 }
 
-static int sof_resume(struct device *dev, int runtime_resume)
+int sof_resume(struct snd_sof_dev *sdev, bool runtime_resume)
 {
-	struct sof_platform_priv *priv = dev_get_drvdata(dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
 	int ret = 0;
 
 	/* do nothing if dsp resume callbacks are not set */
@@ -312,11 +308,11 @@ static int sof_resume(struct device *dev, int runtime_resume)
 
 	return ret;
 }
+EXPORT_SYMBOL(sof_resume);
 
-static int sof_suspend(struct device *dev, int runtime_suspend)
+
+int sof_suspend(struct snd_sof_dev *sdev, bool runtime_suspend)
 {
-	struct sof_platform_priv *priv = dev_get_drvdata(dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
 	int ret = 0;
 
 	/* do nothing if dsp suspend callback is not set */
@@ -366,28 +362,46 @@ static int sof_suspend(struct device *dev, int runtime_suspend)
 
 	return ret;
 }
+EXPORT_SYMBOL(sof_suspend);
+
 
 int snd_sof_runtime_suspend(struct device *dev)
 {
-	return sof_suspend(dev, RUNTIME_PM);
+	struct sof_platform_priv *priv = dev_get_drvdata(dev);
+ 	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
+ 
+  	dev_dbg(sdev->dev, "ranjani: runtime suspend\n");
+ 
+  	return sof_suspend(sdev, true);
 }
 EXPORT_SYMBOL(snd_sof_runtime_suspend);
 
 int snd_sof_runtime_resume(struct device *dev)
 {
-	return sof_resume(dev, RUNTIME_PM);
+	struct sof_platform_priv *priv = dev_get_drvdata(dev);
+ 	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
+ 
+  	dev_dbg(sdev->dev, "ranjani: runtime resume\n");
+ 
+  	return sof_resume(sdev, true);
 }
 EXPORT_SYMBOL(snd_sof_runtime_resume);
 
 int snd_sof_resume(struct device *dev)
 {
-	return sof_resume(dev, !RUNTIME_PM);
+	struct sof_platform_priv *priv = dev_get_drvdata(dev);
+ 	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
+	
+	return sof_resume(sdev, false);
 }
 EXPORT_SYMBOL(snd_sof_resume);
 
 int snd_sof_suspend(struct device *dev)
 {
-	return sof_suspend(dev, false);
+	struct sof_platform_priv *priv = dev_get_drvdata(dev);
+ 	struct snd_sof_dev *sdev = dev_get_drvdata(&priv->pdev_pcm->dev);
+
+	return sof_suspend(sdev, false);
 }
 EXPORT_SYMBOL(snd_sof_suspend);
 

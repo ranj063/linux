@@ -363,6 +363,7 @@ struct snd_sof_dev {
 	/* PM */
 	bool restore_kcontrols; /* restore kcontrols upon resume */
 	bool first_boot;
+	u32 pm_debug;
 
 	void *private;			/* core does not touch this */
 };
@@ -389,6 +390,8 @@ int snd_sof_resume(struct device *dev);
 int snd_sof_suspend(struct device *dev);
 int snd_sof_prepare(struct device *dev);
 int snd_sof_suspend_late(struct device *dev);
+int sof_suspend(struct snd_sof_dev *sdev, bool runtime_suspend);
+int sof_resume(struct snd_sof_dev *sdev, bool runtime_resume);
 
 void snd_sof_new_platform_drv(struct snd_sof_dev *sdev);
 void snd_sof_new_dai_drv(struct snd_sof_dev *sdev);
@@ -486,6 +489,9 @@ int snd_sof_get_status(struct snd_sof_dev *sdev, u32 panic_code,
 		       u32 tracep_code, void *oops, void *stack,
 		       size_t stack_size);
 int snd_sof_init_trace_ipc(struct snd_sof_dev *sdev);
+int snd_sof_debugfs_buf_create_item_writable(struct snd_sof_dev *sdev,
+ 				    void *base, size_t size,
+ 				    const char *name);
 
 /*
  * Platform specific ops.
