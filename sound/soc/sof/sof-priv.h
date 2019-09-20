@@ -387,6 +387,11 @@ struct snd_sof_dai {
 	struct list_head list;	/* list in sdev dai list */
 };
 
+/* SOF client device */
+struct snd_sof_client {
+	struct platform_device *pdev;
+};
+
 /*
  * SOF Device Level.
  */
@@ -476,6 +481,9 @@ struct snd_sof_dev {
 	u32 dtrace_draining;
 
 	bool msi_enabled;
+
+	/* client devices */
+	struct snd_sof_client *sof_audio;
 
 	void *private;			/* core does not touch this */
 };
