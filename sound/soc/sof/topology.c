@@ -773,7 +773,7 @@ static void sof_parse_word_tokens(struct snd_soc_component *scomp,
 				  int count,
 				  struct snd_soc_tplg_vendor_array *array)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_vendor_value_elem *elem;
 	size_t size = sizeof(struct sof_ipc_dai_dmic_pdm_ctrl);
 	int i, j;
@@ -846,7 +846,7 @@ static int sof_parse_tokens(struct snd_soc_component *scomp,
 			    struct snd_soc_tplg_vendor_array *array,
 			    int priv_size)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	int asize;
 
 	while (priv_size > 0) {
@@ -900,7 +900,7 @@ static int sof_parse_tokens(struct snd_soc_component *scomp,
 static void sof_dbg_comp_config(struct snd_soc_component *scomp,
 				struct sof_ipc_comp_config *config)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 
 	dev_dbg(sdev->dev, " config: periods snk %d src %d fmt %d\n",
 		config->periods_sink, config->periods_source,
@@ -916,7 +916,7 @@ static int sof_control_load_volume(struct snd_soc_component *scomp,
 				   struct snd_kcontrol_new *kc,
 				   struct snd_soc_tplg_ctl_hdr *hdr)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_mixer_control *mc =
 		container_of(hdr, struct snd_soc_tplg_mixer_control, hdr);
 	struct sof_ipc_ctrl_data *cdata;
@@ -985,7 +985,7 @@ static int sof_control_load_enum(struct snd_soc_component *scomp,
 				 struct snd_kcontrol_new *kc,
 				 struct snd_soc_tplg_ctl_hdr *hdr)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_enum_control *ec =
 		container_of(hdr, struct snd_soc_tplg_enum_control, hdr);
 
@@ -1016,7 +1016,7 @@ static int sof_control_load_bytes(struct snd_soc_component *scomp,
 				  struct snd_kcontrol_new *kc,
 				  struct snd_soc_tplg_ctl_hdr *hdr)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_ctrl_data *cdata;
 	struct snd_soc_tplg_bytes_control *control =
 		container_of(hdr, struct snd_soc_tplg_bytes_control, hdr);
@@ -1077,7 +1077,7 @@ static int sof_control_load(struct snd_soc_component *scomp, int index,
 	struct soc_mixer_control *sm;
 	struct soc_bytes_ext *sbe;
 	struct soc_enum *se;
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_dobj *dobj;
 	struct snd_sof_control *scontrol;
 	int ret = -EINVAL;
@@ -1132,7 +1132,7 @@ static int sof_control_load(struct snd_soc_component *scomp, int index,
 static int sof_control_unload(struct snd_soc_component *scomp,
 			      struct snd_soc_dobj *dobj)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_free fcomp;
 	struct snd_sof_control *scontrol = dobj->private;
 
@@ -1160,7 +1160,7 @@ static int sof_connect_dai_widget(struct snd_soc_component *scomp,
 				  struct snd_soc_tplg_dapm_widget *tw,
 				  struct snd_sof_dai *dai)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_card *card = scomp->card;
 	struct snd_soc_pcm_runtime *rtd;
 
@@ -1209,7 +1209,7 @@ static int sof_widget_load_dai(struct snd_soc_component *scomp, int index,
 			       struct sof_ipc_comp_reply *r,
 			       struct snd_sof_dai *dai)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_dai comp_dai;
 	int ret;
@@ -1265,7 +1265,7 @@ static int sof_widget_load_buffer(struct snd_soc_component *scomp, int index,
 				  struct snd_soc_tplg_dapm_widget *tw,
 				  struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_buffer *buffer;
 	int ret;
@@ -1336,7 +1336,7 @@ static int sof_widget_load_pcm(struct snd_soc_component *scomp, int index,
 			       struct snd_soc_tplg_dapm_widget *tw,
 			       struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_host *host;
 	int ret;
@@ -1440,7 +1440,7 @@ static int sof_widget_load_pipeline(struct snd_soc_component *scomp,
 				    struct snd_soc_tplg_dapm_widget *tw,
 				    struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_pipe_new *pipeline;
 	struct snd_sof_widget *comp_swidget;
@@ -1503,7 +1503,7 @@ static int sof_widget_load_mixer(struct snd_soc_component *scomp, int index,
 				 struct snd_soc_tplg_dapm_widget *tw,
 				 struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_mixer *mixer;
 	int ret;
@@ -1550,7 +1550,7 @@ static int sof_widget_load_mux(struct snd_soc_component *scomp, int index,
 			       struct snd_soc_tplg_dapm_widget *tw,
 			       struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_mux *mux;
 	int ret;
@@ -1598,7 +1598,7 @@ static int sof_widget_load_pga(struct snd_soc_component *scomp, int index,
 			       struct snd_soc_tplg_dapm_widget *tw,
 			       struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_volume *volume;
 	struct snd_sof_control *scontrol;
@@ -1676,7 +1676,7 @@ static int sof_widget_load_src(struct snd_soc_component *scomp, int index,
 			       struct snd_soc_tplg_dapm_widget *tw,
 			       struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_src *src;
 	int ret;
@@ -1735,7 +1735,7 @@ static int sof_widget_load_siggen(struct snd_soc_component *scomp, int index,
 				  struct snd_soc_tplg_dapm_widget *tw,
 				  struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_tone *tone;
 	int ret;
@@ -1863,7 +1863,7 @@ static int sof_process_load(struct snd_soc_component *scomp, int index,
 			    struct sof_ipc_comp_reply *r,
 			    int type)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_dapm_widget *widget = swidget->widget;
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_process *process = NULL;
@@ -1993,7 +1993,7 @@ static int sof_widget_load_process(struct snd_soc_component *scomp, int index,
 				   struct snd_soc_tplg_dapm_widget *tw,
 				   struct sof_ipc_comp_reply *r)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_process config;
 	int ret;
@@ -2064,7 +2064,7 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 			    struct snd_soc_dapm_widget *w,
 			    struct snd_soc_tplg_dapm_widget *tw)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_widget *swidget;
 	struct snd_sof_dai *dai;
 	struct sof_ipc_comp_reply reply;
@@ -2208,7 +2208,7 @@ static int sof_route_unload(struct snd_soc_component *scomp,
 static int sof_widget_unload(struct snd_soc_component *scomp,
 			     struct snd_soc_dobj *dobj)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	const struct snd_kcontrol_new *kc;
 	struct snd_soc_dapm_widget *widget;
 	struct sof_ipc_pipe_new *pipeline;
@@ -2300,7 +2300,7 @@ static int sof_dai_load(struct snd_soc_component *scomp, int index,
 			struct snd_soc_dai_driver *dai_drv,
 			struct snd_soc_tplg_pcm *pcm, struct snd_soc_dai *dai)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_stream_caps *caps;
 	struct snd_soc_tplg_private *private = &pcm->priv;
 	struct snd_sof_pcm *spcm;
@@ -2495,7 +2495,7 @@ static int sof_link_ssp_load(struct snd_soc_component *scomp, int index,
 			     struct snd_soc_tplg_hw_config *hw_config,
 			     struct sof_ipc_dai_config *config)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &cfg->priv;
 	struct sof_ipc_reply reply;
 	u32 size = sizeof(*config);
@@ -2650,7 +2650,7 @@ static int sof_link_dmic_load(struct snd_soc_component *scomp, int index,
 			      struct snd_soc_tplg_hw_config *hw_config,
 			      struct sof_ipc_dai_config *config)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &cfg->priv;
 	struct sof_ipc_dai_config *ipc_config;
 	struct sof_ipc_reply reply;
@@ -2837,7 +2837,7 @@ static int sof_link_hda_load(struct snd_soc_component *scomp, int index,
 			     struct snd_soc_tplg_hw_config *hw_config,
 			     struct sof_ipc_dai_config *config)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &cfg->priv;
 	struct snd_soc_dai *dai;
 	u32 size = sizeof(*config);
@@ -2878,7 +2878,7 @@ static int sof_link_alh_load(struct snd_soc_component *scomp, int index,
 			     struct snd_soc_tplg_hw_config *hw_config,
 			     struct sof_ipc_dai_config *config)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_reply reply;
 	u32 size = sizeof(*config);
 	int ret;
@@ -2911,7 +2911,7 @@ static int sof_link_load(struct snd_soc_component *scomp, int index,
 			 struct snd_soc_dai_link *link,
 			 struct snd_soc_tplg_link_config *cfg)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &cfg->priv;
 	struct sof_ipc_dai_config config;
 	struct snd_soc_tplg_hw_config *hw_config;
@@ -2923,7 +2923,9 @@ static int sof_link_load(struct snd_soc_component *scomp, int index,
 		dev_err(sdev->dev, "error: no platforms\n");
 		return -EINVAL;
 	}
-	link->platforms->name = dev_name(sdev->dev);
+
+	/* set platform name */
+	link->platforms->name = dev_name(scomp->dev);
 
 	/*
 	 * Set nonatomic property for FE dai links as their trigger action
@@ -3044,7 +3046,7 @@ static int sof_link_hda_unload(struct snd_sof_dev *sdev,
 static int sof_link_unload(struct snd_soc_component *scomp,
 			   struct snd_soc_dobj *dobj)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_dai_link *link =
 		container_of(dobj, struct snd_soc_dai_link, dobj);
 
@@ -3091,7 +3093,7 @@ found:
 static int sof_route_load(struct snd_soc_component *scomp, int index,
 			  struct snd_soc_dapm_route *route)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_pipe_comp_connect *connect;
 	struct snd_sof_widget *source_swidget, *sink_swidget;
 	struct snd_soc_dobj *dobj = &route->dobj;
@@ -3281,7 +3283,7 @@ int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
 /* completion - called at completion of firmware loading */
 static void sof_complete(struct snd_soc_component *scomp)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_widget *swidget;
 
 	/* some widget types require completion notificattion */
@@ -3309,7 +3311,7 @@ static void sof_complete(struct snd_soc_component *scomp)
 static int sof_manifest(struct snd_soc_component *scomp, int index,
 			struct snd_soc_tplg_manifest *man)
 {
-	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	u32 size;
 	u32 abi_version;
 
