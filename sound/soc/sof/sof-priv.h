@@ -18,12 +18,8 @@
 #include <sound/control.h>
 
 #include <sound/sof.h>
-#include <sound/sof/stream.h> /* needs to be included before control.h */
-#include <sound/sof/control.h>
-#include <sound/sof/dai.h>
 #include <sound/sof/info.h>
 #include <sound/sof/pm.h>
-#include <sound/sof/topology.h>
 #include <sound/sof/trace.h>
 
 #include <uapi/sound/sof/fw.h>
@@ -82,8 +78,6 @@ struct snd_sof_dev;
 struct snd_sof_ipc_msg;
 struct snd_sof_ipc;
 struct snd_sof_debugfs_map;
-struct snd_soc_tplg_ops;
-struct snd_soc_component;
 struct snd_sof_pdata;
 
 /*
@@ -307,52 +301,6 @@ struct snd_sof_ipc_msg {
 	bool ipc_complete;
 };
 
-/* PCM stream, mapped to FW component  */
-struct snd_sof_pcm_stream {
-	u32 comp_id;
-	struct snd_dma_buffer page_table;
-	struct sof_ipc_stream_posn posn;
-	struct snd_pcm_substream *substream;
-	struct work_struct period_elapsed_work;
-	bool d0i3_compatible; /* DSP can be in D0I3 when this pcm is opened */
-	/*
-	 * flag to indicate that the DSP pipelines should be kept
-	 * active or not while suspending the stream
-	 */
-	bool suspend_ignored;
-};
-
-/* ALSA SOF PCM device */
-struct snd_sof_pcm {
-	struct snd_sof_dev *sdev;
-	struct snd_soc_tplg_pcm pcm;
-	struct snd_sof_pcm_stream stream[2];
-	struct list_head list;	/* list in sdev pcm list */
-	struct snd_pcm_hw_params params[2];
-	bool prepared[2]; /* PCM_PARAMS set successfully */
-};
-
-/* ASoC SOF DAPM route */
-struct snd_sof_route {
-	struct snd_sof_dev *sdev;
-
-	struct snd_soc_dapm_route *route;
-	struct list_head list;	/* list in sdev route list */
-
-	void *private;
-};
-
-/* ASoC DAI device */
-struct snd_sof_dai {
-	struct snd_sof_dev *sdev;
-	const char *name;
-	const char *cpu_dai_name;
-
-	struct sof_ipc_comp_dai comp_dai;
-	struct sof_ipc_dai_config *dai_config;
-	struct list_head list;	/* list in sdev dai list */
-};
-
 /* SOF client device */
 struct snd_sof_client {
 	struct platform_device *pdev;
@@ -504,22 +452,6 @@ int snd_sof_ipc_valid(struct snd_sof_dev *sdev);
 int sof_ipc_tx_message(struct snd_sof_ipc *ipc, u32 header,
 		       void *msg_data, size_t msg_bytes, void *reply_data,
 		       size_t reply_bytes);
-
-void snd_sof_pcm_period_elapsed(struct snd_pcm_substream *substream);
-
-/*
- * Stream IPC
- */
-int snd_sof_ipc_stream_posn(struct snd_soc_component *scomp,
-			    struct snd_sof_pcm *spcm, int direction,
-			    struct sof_ipc_stream_posn *posn);
-
-int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
-			      struct snd_sof_widget *swidget);
-
-int sof_load_pipeline_ipc(struct snd_sof_dev *sdev,
-			  struct sof_ipc_pipe_new *pipeline,
-			  struct sof_ipc_comp_reply *r);
 void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
 			     struct ipc_rx_client *rx_client);
 
@@ -552,33 +484,6 @@ void snd_sof_handle_fw_exception(struct snd_sof_dev *sdev);
  * Platform specific ops.
  */
 extern struct snd_compr_ops sof_compressed_ops;
-
-/*
- * Kcontrols.
- */
-
-int snd_sof_volume_get(struct snd_kcontrol *kcontrol,
-		       struct snd_ctl_elem_value *ucontrol);
-int snd_sof_volume_put(struct snd_kcontrol *kcontrol,
-		       struct snd_ctl_elem_value *ucontrol);
-int snd_sof_switch_get(struct snd_kcontrol *kcontrol,
-		       struct snd_ctl_elem_value *ucontrol);
-int snd_sof_switch_put(struct snd_kcontrol *kcontrol,
-		       struct snd_ctl_elem_value *ucontrol);
-int snd_sof_enum_get(struct snd_kcontrol *kcontrol,
-		     struct snd_ctl_elem_value *ucontrol);
-int snd_sof_enum_put(struct snd_kcontrol *kcontrol,
-		     struct snd_ctl_elem_value *ucontrol);
-int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
-		      struct snd_ctl_elem_value *ucontrol);
-int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
-		      struct snd_ctl_elem_value *ucontrol);
-int snd_sof_bytes_ext_put(struct snd_kcontrol *kcontrol,
-			  const unsigned int __user *binary_data,
-			  unsigned int size);
-int snd_sof_bytes_ext_get(struct snd_kcontrol *kcontrol,
-			  unsigned int __user *binary_data,
-			  unsigned int size);
 
 /*
  * DSP Architectures.

@@ -41,12 +41,15 @@ static int create_page_table(struct snd_soc_component *component,
 static int sof_pcm_dsp_params(struct snd_sof_pcm *spcm, struct snd_pcm_substream *substream,
 			      const struct sof_ipc_pcm_params_reply *reply)
 {
-	struct snd_sof_dev *sdev = spcm->sdev;
+	struct snd_soc_component *scomp = spcm->scomp;
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	int ret;
+
 	/* validate offset */
-	int ret = snd_sof_ipc_pcm_params(sdev, substream, reply);
+	ret = snd_sof_ipc_pcm_params(sdev, substream, reply);
 
 	if (ret < 0)
-		dev_err(sdev->dev, "error: got wrong reply for PCM %d\n",
+		dev_err(scomp->dev, "error: got wrong reply for PCM %d\n",
 			spcm->pcm.pcm_id);
 
 	return ret;
@@ -755,17 +758,15 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 static int sof_pcm_probe(struct snd_soc_component *component)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(component->dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(component->dev->parent);
-	struct snd_sof_pdata *plat_data = sdev->pdata;
 	const char *tplg_filename;
 	int ret;
 
 	/* load the default topology */
 	sof_audio->component = component;
 
-	tplg_filename = devm_kasprintf(sdev->dev, GFP_KERNEL, "%s/%s",
-				       plat_data->tplg_filename_prefix,
-				       plat_data->tplg_filename);
+	tplg_filename = devm_kasprintf(component->dev, GFP_KERNEL, "%s/%s",
+				       sof_audio->tplg_filename_prefix,
+				       sof_audio->tplg_filename);
 	if (!tplg_filename)
 		return -ENOMEM;
 
@@ -775,14 +776,6 @@ static int sof_pcm_probe(struct snd_soc_component *component)
 			ret);
 		return ret;
 	}
-
-	/*
-	 * Some platforms in SOF, ex: BYT, may not have their platform PM
-	 * callbacks set. Increment the usage count so as to
-	 * prevent the device from entering runtime suspend.
-	 */
-	if (!sof_ops(sdev)->runtime_suspend || !sof_ops(sdev)->runtime_resume)
-		pm_runtime_get_noresume(sdev->dev);
 
 	return ret;
 }

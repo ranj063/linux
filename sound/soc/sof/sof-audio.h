@@ -15,7 +15,36 @@
 #include <sound/sof/control.h>
 #include <sound/sof/dai.h>
 #include <sound/sof/topology.h>
-#include "sof-priv.h"
+
+#define DRV_NAME	"sof-audio-component"
+
+struct snd_soc_tplg_ops;
+struct snd_soc_component;
+
+/* PCM stream, mapped to FW component */
+struct snd_sof_pcm_stream {
+	u32 comp_id;
+	struct snd_dma_buffer page_table;
+	struct sof_ipc_stream_posn posn;
+	struct snd_pcm_substream *substream;
+	struct work_struct period_elapsed_work;
+	bool d0i3_compatible; /* DSP can be in D0I3 when this pcm is opened */
+	/*
+	 * flag to indicate that the DSP pipelines should be kept
+	 * active or not while suspending the stream
+	 */
+	bool suspend_ignored;
+};
+
+/* ALSA SOF PCM device */
+struct snd_sof_pcm {
+	struct snd_soc_component *scomp;
+	struct snd_soc_tplg_pcm pcm;
+	struct snd_sof_pcm_stream stream[2];
+	struct list_head list;	/* list in sof_audio_dev pcm list */
+	struct snd_pcm_hw_params params[2];
+	bool prepared[2]; /* PCM_PARAMS set successfully */
+};
 
 struct snd_sof_led_control {
 	unsigned int use_led;
@@ -53,6 +82,27 @@ struct snd_sof_widget {
 	struct list_head list;	/* list in sof_audio_dev widget list */
 
 	void *private;		/* core does not touch this */
+};
+
+/* ASoC SOF DAPM route */
+struct snd_sof_route {
+	struct snd_soc_component *scomp;
+
+	struct snd_soc_dapm_route *route;
+	struct list_head list;	/* list in sof_audio_dev route list */
+
+	void *private;
+};
+
+/* ASoC DAI device */
+struct snd_sof_dai {
+	struct snd_soc_component *scomp;
+	const char *name;
+	const char *cpu_dai_name;
+
+	struct sof_ipc_comp_dai comp_dai;
+	struct sof_ipc_dai_config *dai_config;
+	struct list_head list;	/* list in sof_audio_dev dai list */
 };
 
 /* SOF audio device */
@@ -113,6 +163,54 @@ struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_soc_component *scomp,
 					   int *direction);
 struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_soc_component *scomp,
 					     unsigned int pcm_id);
+void snd_sof_pcm_period_elapsed(struct snd_pcm_substream *substream);
+
+/*
+ * Topology
+ */
+int snd_sof_load_topology(struct snd_soc_component *scomp, const char *file);
+int snd_sof_complete_pipeline(struct snd_soc_component *scomp,
+			      struct snd_sof_widget *swidget);
+int sof_load_pipeline_ipc(struct snd_soc_component *scomp,
+			  struct sof_ipc_pipe_new *pipeline,
+			  struct sof_ipc_comp_reply *r);
+
+void snd_sof_new_platform_drv(struct sof_audio_dev *sof_audio,
+			      struct snd_sof_pdata *plat_data);
+
+/*
+ * Stream IPC
+ */
+int snd_sof_ipc_stream_posn(struct snd_soc_component *scomp,
+			    struct snd_sof_pcm *spcm, int direction,
+			    struct sof_ipc_stream_posn *posn);
+
+/*
+ * Kcontrols.
+ */
+
+int snd_sof_volume_get(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol);
+int snd_sof_volume_put(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol);
+int snd_sof_switch_get(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol);
+int snd_sof_switch_put(struct snd_kcontrol *kcontrol,
+		       struct snd_ctl_elem_value *ucontrol);
+int snd_sof_enum_get(struct snd_kcontrol *kcontrol,
+		     struct snd_ctl_elem_value *ucontrol);
+int snd_sof_enum_put(struct snd_kcontrol *kcontrol,
+		     struct snd_ctl_elem_value *ucontrol);
+int snd_sof_bytes_get(struct snd_kcontrol *kcontrol,
+		      struct snd_ctl_elem_value *ucontrol);
+int snd_sof_bytes_put(struct snd_kcontrol *kcontrol,
+		      struct snd_ctl_elem_value *ucontrol);
+int snd_sof_bytes_ext_put(struct snd_kcontrol *kcontrol,
+			  const unsigned int __user *binary_data,
+			  unsigned int size);
+int snd_sof_bytes_ext_get(struct snd_kcontrol *kcontrol,
+			  unsigned int __user *binary_data,
+			  unsigned int size);
 
 void snd_sof_new_platform_drv(struct sof_audio_dev *sof_audio,
 			      struct snd_sof_pdata *plat_data);

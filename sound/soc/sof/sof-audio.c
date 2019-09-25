@@ -196,7 +196,6 @@ static int sof_set_hw_params_upon_resume(struct device *dev)
 static int sof_restore_kcontrols(struct device *dev)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
 	struct snd_sof_control *scontrol;
 	int ipc_cmd, ctrl_type;
 	int ret = 0;
@@ -246,7 +245,7 @@ static int sof_restore_kcontrols(struct device *dev)
 static int sof_restore_pipelines(struct device *dev)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
+	struct snd_soc_component *scomp = sof_audio->component;
 	struct snd_sof_widget *swidget;
 	struct snd_sof_route *sroute;
 	struct sof_ipc_pipe_new *pipeline;
@@ -282,7 +281,7 @@ static int sof_restore_pipelines(struct device *dev)
 			 * scheduled on.
 			 */
 			pipeline = swidget->private;
-			ret = sof_load_pipeline_ipc(sdev, pipeline, &r);
+			ret = sof_load_pipeline_ipc(scomp, pipeline, &r);
 			break;
 		default:
 			hdr = swidget->private;
@@ -367,7 +366,7 @@ static int sof_restore_pipelines(struct device *dev)
 		switch (swidget->id) {
 		case snd_soc_dapm_scheduler:
 			swidget->complete =
-				snd_sof_complete_pipeline(sdev, swidget);
+				snd_sof_complete_pipeline(scomp, swidget);
 			break;
 		default:
 			break;
