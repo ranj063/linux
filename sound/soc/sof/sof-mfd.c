@@ -7,6 +7,14 @@
 #include <linux/device.h>
 #include "sof-mfd.h"
 
+void *sof_mfd_get_client_data(struct device *dev)
+{
+	struct sof_mfd_client *client = dev_get_platdata(dev);
+
+	return client->client_data;
+}
+EXPORT_SYMBOL(sof_mfd_get_client_data);
+
 struct sof_mfd_client *sof_client_dev_register(struct snd_sof_dev *sdev,
 					       const char *name)
 {

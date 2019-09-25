@@ -15,10 +15,13 @@
 #include <linux/types.h>
 
 #include "sof-priv.h"
+#include "sof-mfd.h"
+#include "sof-audio.h"
 #include "ops.h"
 
 static void ipc_trace_message(struct snd_sof_dev *sdev, u32 msg_id);
-static void ipc_stream_message(struct snd_sof_dev *sdev, u32 msg_cmd);
+static void ipc_client_message(struct snd_sof_dev *sdev, u32 ipc_cmd,
+			       u32 msg_cmd);
 
 /*
  * IPC message Tx/Rx message handling.
@@ -306,6 +309,27 @@ int sof_ipc_tx_message(struct snd_sof_ipc *ipc, u32 header,
 }
 EXPORT_SYMBOL(sof_ipc_tx_message);
 
+/* send IPC message from client to DSP */
+int sof_client_tx_message(struct device *dev, u32 header,
+			  void *msg_data, size_t msg_bytes, void *reply_data,
+			  size_t reply_bytes)
+{
+	struct sof_mfd_client *mfd_client = dev_get_platdata(dev);
+	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
+	int ret;
+
+	ret = sof_ipc_tx_message(sdev->ipc, header, msg_data, msg_bytes,
+				 reply_data, reply_bytes);
+
+	/* invoke client reply callback if IPC is successful */
+	if (mfd_client->sof_ipc_reply_cb)
+		mfd_client->sof_ipc_reply_cb(mfd_client, reply_data,
+					     reply_bytes);
+
+	return ret;
+}
+EXPORT_SYMBOL(sof_client_tx_message);
+
 /* handle reply message from DSP */
 int snd_sof_ipc_reply(struct snd_sof_dev *sdev, u32 msg_id)
 {
@@ -371,7 +395,7 @@ void snd_sof_ipc_msgs_rx(struct snd_sof_dev *sdev)
 		break;
 	case SOF_IPC_GLB_STREAM_MSG:
 		/* need to pass msg id into the function */
-		ipc_stream_message(sdev, hdr.cmd);
+		ipc_client_message(sdev, cmd, hdr.cmd);
 		break;
 	case SOF_IPC_GLB_TRACE_MSG:
 		ipc_trace_message(sdev, type);
@@ -407,88 +431,25 @@ static void ipc_trace_message(struct snd_sof_dev *sdev, u32 msg_id)
 }
 
 /*
- * IPC stream position.
+ * Notifications from DSP FW.
  */
-
-static void ipc_period_elapsed(struct snd_sof_dev *sdev, u32 msg_id)
+static void ipc_client_message(struct snd_sof_dev *sdev,
+			       u32 ipc_cmd, u32 msg_cmd)
 {
-	struct snd_sof_pcm_stream *stream;
-	struct sof_ipc_stream_posn posn;
-	struct snd_sof_pcm *spcm;
-	int direction;
+	struct ipc_rx_client *rx_client;
+	struct sof_mfd_client *mfd_client;
 
-	spcm = snd_sof_find_spcm_comp(sdev, msg_id, &direction);
-	if (!spcm) {
-		dev_err(sdev->dev,
-			"error: period elapsed for unknown stream, msg_id %d\n",
-			msg_id);
-		return;
-	}
-
-	stream = &spcm->stream[direction];
-	snd_sof_ipc_msg_data(sdev, stream->substream, &posn, sizeof(posn));
-
-	dev_dbg(sdev->dev, "posn : host 0x%llx dai 0x%llx wall 0x%llx\n",
-		posn.host_posn, posn.dai_posn, posn.wallclock);
-
-	memcpy(&stream->posn, &posn, sizeof(posn));
-
-	/* only inform ALSA for period_wakeup mode */
-	if (!stream->substream->runtime->no_period_wakeup)
-		snd_sof_pcm_period_elapsed(stream->substream);
-}
-
-/* DSP notifies host of an XRUN within FW */
-static void ipc_xrun(struct snd_sof_dev *sdev, u32 msg_id)
-{
-	struct snd_sof_pcm_stream *stream;
-	struct sof_ipc_stream_posn posn;
-	struct snd_sof_pcm *spcm;
-	int direction;
-
-	spcm = snd_sof_find_spcm_comp(sdev, msg_id, &direction);
-	if (!spcm) {
-		dev_err(sdev->dev, "error: XRUN for unknown stream, msg_id %d\n",
-			msg_id);
-		return;
-	}
-
-	stream = &spcm->stream[direction];
-	snd_sof_ipc_msg_data(sdev, stream->substream, &posn, sizeof(posn));
-
-	dev_dbg(sdev->dev,  "posn XRUN: host %llx comp %d size %d\n",
-		posn.host_posn, posn.xrun_comp_id, posn.xrun_size);
-
-#if defined(CONFIG_SND_SOC_SOF_DEBUG_XRUN_STOP)
-	/* stop PCM on XRUN - used for pipeline debug */
-	memcpy(&stream->posn, &posn, sizeof(posn));
-	snd_pcm_stop_xrun(stream->substream);
-#endif
-}
-
-/* stream notifications from DSP FW */
-static void ipc_stream_message(struct snd_sof_dev *sdev, u32 msg_cmd)
-{
-	/* get msg cmd type and msd id */
-	u32 msg_type = msg_cmd & SOF_CMD_TYPE_MASK;
-	u32 msg_id = SOF_IPC_MESSAGE_ID(msg_cmd);
-
-	switch (msg_type) {
-	case SOF_IPC_STREAM_POSITION:
-		ipc_period_elapsed(sdev, msg_id);
-		break;
-	case SOF_IPC_STREAM_TRIG_XRUN:
-		ipc_xrun(sdev, msg_id);
-		break;
-	default:
-		dev_err(sdev->dev, "error: unhandled stream message %x\n",
-			msg_id);
-		break;
+	/* send message to the clients registered to receive it */
+	list_for_each_entry(rx_client, &sdev->ipc_rx_list, list) {
+		if (rx_client->ipc_cmd == ipc_cmd) {
+			mfd_client = dev_get_platdata(rx_client->dev);
+			mfd_client->sof_client_rx_message(mfd_client, msg_cmd);
+		}
 	}
 }
 
 /* get stream position IPC - use faster MMIO method if available on platform */
-int snd_sof_ipc_stream_posn(struct snd_sof_dev *sdev,
+int snd_sof_ipc_stream_posn(struct snd_soc_component *scomp,
 			    struct snd_sof_pcm *spcm, int direction,
 			    struct sof_ipc_stream_posn *posn)
 {
@@ -501,11 +462,11 @@ int snd_sof_ipc_stream_posn(struct snd_sof_dev *sdev,
 	stream.comp_id = spcm->stream[direction].comp_id;
 
 	/* send IPC to the DSP */
-	err = sof_ipc_tx_message(sdev->ipc,
-				 stream.hdr.cmd, &stream, sizeof(stream), &posn,
-				 sizeof(*posn));
+	err = sof_client_tx_message(scomp->dev,
+				    stream.hdr.cmd, &stream, sizeof(stream),
+				    &posn, sizeof(*posn));
 	if (err < 0) {
-		dev_err(sdev->dev, "error: failed to get stream %d position\n",
+		dev_err(scomp->dev, "error: failed to get stream %d position\n",
 			stream.comp_id);
 		return err;
 	}
@@ -618,7 +579,7 @@ static int sof_set_get_large_ctrl_data(struct snd_sof_dev *sdev,
 /*
  * IPC get()/set() for kcontrols.
  */
-int snd_sof_ipc_set_get_comp_data(struct snd_sof_ipc *ipc,
+int snd_sof_ipc_set_get_comp_data(struct snd_soc_component *scomp,
 				  struct snd_sof_control *scontrol,
 				  u32 ipc_cmd,
 				  enum sof_ipc_ctrl_type ctrl_type,
@@ -626,12 +587,15 @@ int snd_sof_ipc_set_get_comp_data(struct snd_sof_ipc *ipc,
 				  bool send)
 {
 	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
-	struct snd_sof_dev *sdev = ipc->sdev;
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_fw_ready *ready = &sdev->fw_ready;
 	struct sof_ipc_fw_version *v = &ready->version;
 	struct sof_ipc_ctrl_data_params sparams;
 	size_t send_bytes;
 	int err;
+
+	if (!pm_runtime_active(sdev->dev))
+		return 0;
 
 	/* read or write firmware volume */
 	if (scontrol->readback_offset != 0) {
@@ -689,9 +653,9 @@ int snd_sof_ipc_set_get_comp_data(struct snd_sof_ipc *ipc,
 
 	/* send normal size ipc in one part */
 	if (cdata->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
-		err = sof_ipc_tx_message(sdev->ipc, cdata->rhdr.hdr.cmd, cdata,
-					 cdata->rhdr.hdr.size, cdata,
-					 cdata->rhdr.hdr.size);
+		err = sof_client_tx_message(scomp->dev, cdata->rhdr.hdr.cmd,
+					    cdata, cdata->rhdr.hdr.size, cdata,
+					    cdata->rhdr.hdr.size);
 
 		if (err < 0)
 			dev_err(sdev->dev, "error: set/get ctrl ipc comp %d\n",

@@ -26,111 +26,69 @@ MODULE_PARM_DESC(sof_debug, "SOF core debug options (0x0 all off)");
 #define TIMEOUT_DEFAULT_IPC_MS  500
 #define TIMEOUT_DEFAULT_BOOT_MS 2000
 
+void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
+			     struct ipc_rx_client *rx_client)
+{
+	list_add(&rx_client->list, &sdev->ipc_rx_list);
+}
+
 /*
- * Generic object lookup APIs.
+ * Generic buffer page table creation.
+ * Take the each physical page address and drop the least significant unused
+ * bits from each (based on PAGE_SIZE). Then pack valid page address bits
+ * into compressed page table.
  */
 
-struct snd_sof_pcm *snd_sof_find_spcm_name(struct snd_sof_dev *sdev,
-					   const char *name)
+int snd_sof_create_page_table(struct device *dev,
+			      struct snd_dma_buffer *dmab,
+			      unsigned char *page_table, size_t size)
 {
-	struct snd_sof_pcm *spcm;
+	int i, pages;
 
-	list_for_each_entry(spcm, &sdev->pcm_list, list) {
-		/* match with PCM dai name */
-		if (strcmp(spcm->pcm.dai_name, name) == 0)
-			return spcm;
+	pages = snd_sgbuf_aligned_pages(size);
 
-		/* match with playback caps name if set */
-		if (*spcm->pcm.caps[0].name &&
-		    !strcmp(spcm->pcm.caps[0].name, name))
-			return spcm;
+	dev_dbg(dev,
+		"generating page table for %p size 0x%zx pages %d\n",
+		dmab->area, size, pages);
 
-		/* match with capture caps name if set */
-		if (*spcm->pcm.caps[1].name &&
-		    !strcmp(spcm->pcm.caps[1].name, name))
-			return spcm;
+	for (i = 0; i < pages; i++) {
+		/*
+		 * The number of valid address bits for each page is 20.
+		 * idx determines the byte position within page_table
+		 * where the current page's address is stored
+		 * in the compressed page_table.
+		 * This can be calculated by multiplying the page number by 2.5.
+		 */
+		u32 idx = (5 * i) >> 1;
+		u32 pfn = snd_sgbuf_get_addr(dmab, i * PAGE_SIZE) >> PAGE_SHIFT;
+		u8 *pg_table;
+
+		dev_vdbg(dev, "pfn i %i idx %d pfn %x\n", i, idx, pfn);
+
+		pg_table = (u8 *)(page_table + idx);
+
+		/*
+		 * pagetable compression:
+		 * byte 0     byte 1     byte 2     byte 3     byte 4     byte 5
+		 * ___________pfn 0__________ __________pfn 1___________  _pfn 2...
+		 * .... ....  .... ....  .... ....  .... ....  .... ....  ....
+		 * It is created by:
+		 * 1. set current location to 0, PFN index i to 0
+		 * 2. put pfn[i] at current location in Little Endian byte order
+		 * 3. calculate an intermediate value as
+		 *    x = (pfn[i+1] << 4) | (pfn[i] & 0xf)
+		 * 4. put x at offset (current location + 2) in LE byte order
+		 * 5. increment current location by 5 bytes, increment i by 2
+		 * 6. continue to (2)
+		 */
+		if (i & 1)
+			put_unaligned_le32((pg_table[0] & 0xf) | pfn << 4,
+					   pg_table);
+		else
+			put_unaligned_le32(pfn, pg_table);
 	}
 
-	return NULL;
-}
-
-struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_sof_dev *sdev,
-					   unsigned int comp_id,
-					   int *direction)
-{
-	struct snd_sof_pcm *spcm;
-
-	list_for_each_entry(spcm, &sdev->pcm_list, list) {
-		if (spcm->stream[SNDRV_PCM_STREAM_PLAYBACK].comp_id == comp_id) {
-			*direction = SNDRV_PCM_STREAM_PLAYBACK;
-			return spcm;
-		}
-		if (spcm->stream[SNDRV_PCM_STREAM_CAPTURE].comp_id == comp_id) {
-			*direction = SNDRV_PCM_STREAM_CAPTURE;
-			return spcm;
-		}
-	}
-
-	return NULL;
-}
-
-struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_sof_dev *sdev,
-					     unsigned int pcm_id)
-{
-	struct snd_sof_pcm *spcm;
-
-	list_for_each_entry(spcm, &sdev->pcm_list, list) {
-		if (le32_to_cpu(spcm->pcm.pcm_id) == pcm_id)
-			return spcm;
-	}
-
-	return NULL;
-}
-
-struct snd_sof_widget *snd_sof_find_swidget(struct snd_sof_dev *sdev,
-					    const char *name)
-{
-	struct snd_sof_widget *swidget;
-
-	list_for_each_entry(swidget, &sdev->widget_list, list) {
-		if (strcmp(name, swidget->widget->name) == 0)
-			return swidget;
-	}
-
-	return NULL;
-}
-
-/* find widget by stream name and direction */
-struct snd_sof_widget *snd_sof_find_swidget_sname(struct snd_sof_dev *sdev,
-						  const char *pcm_name, int dir)
-{
-	struct snd_sof_widget *swidget;
-	enum snd_soc_dapm_type type;
-
-	if (dir == SNDRV_PCM_STREAM_PLAYBACK)
-		type = snd_soc_dapm_aif_in;
-	else
-		type = snd_soc_dapm_aif_out;
-
-	list_for_each_entry(swidget, &sdev->widget_list, list) {
-		if (!strcmp(pcm_name, swidget->widget->sname) && swidget->id == type)
-			return swidget;
-	}
-
-	return NULL;
-}
-
-struct snd_sof_dai *snd_sof_find_dai(struct snd_sof_dev *sdev,
-				     const char *name)
-{
-	struct snd_sof_dai *dai;
-
-	list_for_each_entry(dai, &sdev->dai_list, list) {
-		if (dai->name && (strcmp(name, dai->name) == 0))
-			return dai;
-	}
-
-	return NULL;
+	return pages;
 }
 
 /*
@@ -200,64 +158,6 @@ out:
 	sof_stack(sdev, oops, stack, stack_words);
 }
 EXPORT_SYMBOL(snd_sof_get_status);
-
-/*
- * Generic buffer page table creation.
- * Take the each physical page address and drop the least significant unused
- * bits from each (based on PAGE_SIZE). Then pack valid page address bits
- * into compressed page table.
- */
-
-int snd_sof_create_page_table(struct snd_sof_dev *sdev,
-			      struct snd_dma_buffer *dmab,
-			      unsigned char *page_table, size_t size)
-{
-	int i, pages;
-
-	pages = snd_sgbuf_aligned_pages(size);
-
-	dev_dbg(sdev->dev, "generating page table for %p size 0x%zx pages %d\n",
-		dmab->area, size, pages);
-
-	for (i = 0; i < pages; i++) {
-		/*
-		 * The number of valid address bits for each page is 20.
-		 * idx determines the byte position within page_table
-		 * where the current page's address is stored
-		 * in the compressed page_table.
-		 * This can be calculated by multiplying the page number by 2.5.
-		 */
-		u32 idx = (5 * i) >> 1;
-		u32 pfn = snd_sgbuf_get_addr(dmab, i * PAGE_SIZE) >> PAGE_SHIFT;
-		u8 *pg_table;
-
-		dev_vdbg(sdev->dev, "pfn i %i idx %d pfn %x\n", i, idx, pfn);
-
-		pg_table = (u8 *)(page_table + idx);
-
-		/*
-		 * pagetable compression:
-		 * byte 0     byte 1     byte 2     byte 3     byte 4     byte 5
-		 * ___________pfn 0__________ __________pfn 1___________  _pfn 2...
-		 * .... ....  .... ....  .... ....  .... ....  .... ....  ....
-		 * It is created by:
-		 * 1. set current location to 0, PFN index i to 0
-		 * 2. put pfn[i] at current location in Little Endian byte order
-		 * 3. calculate an intermediate value as
-		 *    x = (pfn[i+1] << 4) | (pfn[i] & 0xf)
-		 * 4. put x at offset (current location + 2) in LE byte order
-		 * 5. increment current location by 5 bytes, increment i by 2
-		 * 6. continue to (2)
-		 */
-		if (i & 1)
-			put_unaligned_le32((pg_table[0] & 0xf) | pfn << 4,
-					   pg_table);
-		else
-			put_unaligned_le32(pfn, pg_table);
-	}
-
-	return pages;
-}
 
 static int sof_probe_continue(struct snd_sof_dev *sdev)
 {
@@ -405,11 +305,7 @@ int snd_sof_device_probe(struct device *dev, struct snd_sof_pdata *plat_data)
 	    !sof_ops(sdev)->fw_ready)
 		return -EINVAL;
 
-	INIT_LIST_HEAD(&sdev->pcm_list);
-	INIT_LIST_HEAD(&sdev->kcontrol_list);
-	INIT_LIST_HEAD(&sdev->widget_list);
-	INIT_LIST_HEAD(&sdev->dai_list);
-	INIT_LIST_HEAD(&sdev->route_list);
+	INIT_LIST_HEAD(&sdev->ipc_rx_list);
 	spin_lock_init(&sdev->ipc_lock);
 	spin_lock_init(&sdev->hw_lock);
 
