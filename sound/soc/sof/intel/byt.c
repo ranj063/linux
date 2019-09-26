@@ -16,6 +16,7 @@
 #include <sound/sof.h>
 #include <sound/sof/xtensa.h>
 #include "../ops.h"
+#include "../sof-audio.h"
 #include "shim.h"
 
 /* DSP memories */
@@ -512,28 +513,33 @@ const struct snd_sof_dsp_ops sof_tng_ops = {
 	.get_window_offset = byt_get_window_offset,
 
 	.ipc_msg_data	= intel_ipc_msg_data,
-	.ipc_pcm_params	= intel_ipc_pcm_params,
 
 	/* debug */
 	.debug_map	= byt_debugfs,
 	.debug_map_count	= ARRAY_SIZE(byt_debugfs),
 	.dbg_dump	= byt_dump,
 
-	/* stream callbacks */
-	.pcm_open	= intel_pcm_open,
-	.pcm_close	= intel_pcm_close,
-
 	/* module loading */
 	.load_module	= snd_sof_parse_module_memcpy,
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+};
+EXPORT_SYMBOL(sof_tng_ops);
+
+const struct snd_sof_audio_ops sof_tng_audio_ops = {
+	/* stream callbacks */
+	.pcm_open	= intel_pcm_open,
+	.pcm_close	= intel_pcm_close,
+
+	/* IPC */
+	.ipc_pcm_params	= intel_ipc_pcm_params,
 
 	/* DAI drivers */
 	.drv = byt_dai,
-	.num_drv = 3, /* we have only 3 SSPs on byt*/
+	.num_drv = 3, /* we have only 3 SSPs on byt */
 };
-EXPORT_SYMBOL(sof_tng_ops);
+EXPORT_SYMBOL(sof_tng_audio_ops);
 
 const struct sof_intel_dsp_desc tng_chip_info = {
 	.cores_num = 1,
@@ -673,28 +679,33 @@ const struct snd_sof_dsp_ops sof_byt_ops = {
 	.get_window_offset = byt_get_window_offset,
 
 	.ipc_msg_data	= intel_ipc_msg_data,
-	.ipc_pcm_params	= intel_ipc_pcm_params,
 
 	/* debug */
 	.debug_map	= byt_debugfs,
 	.debug_map_count	= ARRAY_SIZE(byt_debugfs),
 	.dbg_dump	= byt_dump,
 
-	/* stream callbacks */
-	.pcm_open	= intel_pcm_open,
-	.pcm_close	= intel_pcm_close,
-
 	/* module loading */
 	.load_module	= snd_sof_parse_module_memcpy,
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+};
+EXPORT_SYMBOL(sof_byt_ops);
+
+const struct snd_sof_audio_ops sof_byt_audio_ops = {
+	/* stream callbacks */
+	.pcm_open	= intel_pcm_open,
+	.pcm_close	= intel_pcm_close,
+
+	/* IPC */
+	.ipc_pcm_params	= intel_ipc_pcm_params,
 
 	/* DAI drivers */
 	.drv = byt_dai,
 	.num_drv = 3, /* we have only 3 SSPs on byt*/
 };
-EXPORT_SYMBOL(sof_byt_ops);
+EXPORT_SYMBOL(sof_byt_audio_ops);
 
 const struct sof_intel_dsp_desc byt_chip_info = {
 	.cores_num = 1,
@@ -732,29 +743,34 @@ const struct snd_sof_dsp_ops sof_cht_ops = {
 	.get_window_offset = byt_get_window_offset,
 
 	.ipc_msg_data	= intel_ipc_msg_data,
-	.ipc_pcm_params	= intel_ipc_pcm_params,
 
 	/* debug */
 	.debug_map	= cht_debugfs,
 	.debug_map_count	= ARRAY_SIZE(cht_debugfs),
 	.dbg_dump	= byt_dump,
 
-	/* stream callbacks */
-	.pcm_open	= intel_pcm_open,
-	.pcm_close	= intel_pcm_close,
-
 	/* module loading */
 	.load_module	= snd_sof_parse_module_memcpy,
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+};
+EXPORT_SYMBOL(sof_cht_ops);
+
+const struct snd_sof_audio_ops sof_cht_audio_ops = {
+	/* stream callbacks */
+	.pcm_open	= intel_pcm_open,
+	.pcm_close	= intel_pcm_close,
+
+	/* IPC */
+	.ipc_pcm_params	= intel_ipc_pcm_params,
 
 	/* DAI drivers */
 	.drv = byt_dai,
 	/* all 6 SSPs may be available for cherrytrail */
 	.num_drv = ARRAY_SIZE(byt_dai),
 };
-EXPORT_SYMBOL(sof_cht_ops);
+EXPORT_SYMBOL(sof_cht_audio_ops);
 
 const struct sof_intel_dsp_desc cht_chip_info = {
 	.cores_num = 1,
