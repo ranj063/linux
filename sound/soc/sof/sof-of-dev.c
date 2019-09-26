@@ -13,6 +13,7 @@
 #include "ops.h"
 
 extern struct snd_sof_dsp_ops sof_imx8_ops;
+extern struct snd_sof_audio_ops sof_imx8_audio_ops;
 
 /* platform specific devices */
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_IMX8)
@@ -22,6 +23,7 @@ static struct sof_dev_desc sof_of_imx8qxp_desc = {
 	.nocodec_fw_filename = "sof-imx8.ri",
 	.nocodec_tplg_filename = "sof-imx8-nocodec.tplg",
 	.ops = &sof_imx8_ops,
+	.audio_ops = &sof_imx8_audio_ops,
 };
 #endif
 

@@ -21,6 +21,7 @@
 #include <linux/firmware/imx/svc/misc.h>
 #include <dt-bindings/firmware/imx/rsrc.h>
 #include "../ops.h"
+#include "../sof-audio.h"
 
 /* DSP memories */
 #define IRAM_OFFSET		0x10000
@@ -345,7 +346,7 @@ static void imx8_ipc_msg_data(struct snd_sof_dev *sdev,
 	sof_mailbox_read(sdev, sdev->dsp_box.offset, p, sz);
 }
 
-static int imx8_ipc_pcm_params(struct snd_sof_dev *sdev,
+static int imx8_ipc_pcm_params(struct snd_soc_component *scomp,
 			       struct snd_pcm_substream *substream,
 			       const struct sof_ipc_pcm_params_reply *reply)
 {
@@ -377,25 +378,30 @@ struct snd_sof_dsp_ops sof_imx8_ops = {
 	.get_window_offset	= imx8_get_window_offset,
 
 	.ipc_msg_data	= imx8_ipc_msg_data,
-	.ipc_pcm_params	= imx8_ipc_pcm_params,
 
 	/* module loading */
 	.load_module	= snd_sof_parse_module_memcpy,
 	.get_bar_index	= imx8_get_bar_index,
 	/* firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+};
+EXPORT_SYMBOL(sof_imx8_ops);
 
-	/* DAI drivers */
-	.drv = imx8_dai,
-	.num_drv = 1, /* we have only 1 ESAI interface on i.MX8 */
+/* imx8 audio ops */
+const struct snd_sof_audio_ops sof_imx8_audio_ops = {
+	/* IPC */
+	.ipc_pcm_params	= imx8_ipc_pcm_params,
 
 	/* ALSA HW info flags */
 	.hw_info =	SNDRV_PCM_INFO_MMAP |
 			SNDRV_PCM_INFO_MMAP_VALID |
 			SNDRV_PCM_INFO_INTERLEAVED |
 			SNDRV_PCM_INFO_PAUSE |
-			SNDRV_PCM_INFO_NO_PERIOD_WAKEUP
+			SNDRV_PCM_INFO_NO_PERIOD_WAKEUP,
+	/* DAI drivers */
+	.drv = imx8_dai,
+	.num_drv = 1, /* we have only 1 ESAI interface on i.MX8 */
 };
-EXPORT_SYMBOL(sof_imx8_ops);
+EXPORT_SYMBOL(sof_imx8_audio_ops);
 
 MODULE_LICENSE("Dual BSD/GPL");
