@@ -92,4 +92,16 @@ snd_sof_pcm_platform_pointer(struct sof_audio_dev *sof_audio,
 
 	return 0;
 }
+
+/* machine driver check */
+static inline int
+snd_sof_machine_driver_check(struct snd_sof_dev *sdev,
+			     struct sof_audio_dev *sof_audio)
+{
+	if (sof_audio->audio_ops->machine_driver_check)
+		return sof_audio->audio_ops->machine_driver_check(sdev,
+								  sof_audio);
+
+	return 0;
+}
 #endif

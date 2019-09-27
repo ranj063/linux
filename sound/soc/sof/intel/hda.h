@@ -14,6 +14,7 @@
 #include <sound/hda_codec.h>
 #include <sound/hdaudio_ext.h>
 #include "shim.h"
+#include "../sof-audio.h"
 
 /* PCI registers */
 #define PCI_TCSEL			0x44
@@ -599,6 +600,10 @@ int hda_dsp_trace_trigger(struct snd_sof_dev *sdev, int cmd);
 
 /* common dai driver */
 extern struct snd_soc_dai_driver skl_dai[];
+
+/* Platform specific machine driver selection */
+int hda_machine_driver_check(struct snd_sof_dev *dev,
+			     struct sof_audio_dev *sof_audio);
 
 /*
  * Platform Specific HW abstraction Ops.
