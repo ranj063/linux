@@ -63,7 +63,7 @@ struct snd_sof_audio_ops {
 
 	/* DAI ops */
 	struct snd_soc_dai_driver *drv;
-	int num_drv;
+	int num_nocodec_dailinks;
 };
 
 /* PCM stream, mapped to FW component  */
@@ -276,4 +276,13 @@ int sof_nocodec_setup(struct device *dev,
 		      struct sof_audio_dev *sof_audio,
 		      struct snd_soc_acpi_mach *mach,
 		      const struct sof_dev_desc *desc);
+
+/* IPC */
+void sof_audio_rx_message(struct sof_mfd_client *client, u32 msg_cmd);
+
+/* PM */
+int sof_audio_resume(struct device *dev);
+int sof_audio_suspend(struct device *dev);
+int sof_audio_runtime_suspend(struct device *dev);
+
 #endif

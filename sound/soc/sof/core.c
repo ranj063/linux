@@ -31,6 +31,7 @@ void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
 {
 	list_add(&rx_client->list, &sdev->ipc_rx_list);
 }
+EXPORT_SYMBOL(snd_sof_ipc_rx_register);
 
 /*
  * Generic buffer page table creation.
@@ -226,13 +227,8 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 	/* hereafter all FW boot flows are for PM reasons */
 	sdev->first_boot = false;
 
-	/*
-	 * Register audio client.
-	 * This can fail but errors cannot be propagated.
-	 */
-	sdev->sof_audio = sof_client_dev_register(sdev, "sof-audio");
-	if (!sdev->sof_audio)
-		dev_warn(sdev->dev, "sof-audio client failed to register\n");
+	/* register client devices */
+	snd_sof_register_clients(sdev);
 
 	if (plat_data->sof_probe_complete)
 		plat_data->sof_probe_complete(sdev->dev);
@@ -338,9 +334,8 @@ int snd_sof_device_remove(struct device *dev)
 	if (IS_ENABLED(CONFIG_SND_SOC_SOF_PROBE_WORK_QUEUE))
 		cancel_work_sync(&sdev->probe_work);
 
-	/* Unregister audio client device */
-	if (sdev->sof_audio)
-		sof_client_dev_unregister(sdev->sof_audio);
+	/* Unregister client devices */
+	snd_sof_unregister_clients(sdev);
 
 	snd_sof_fw_unload(sdev);
 	snd_sof_ipc_free(sdev);

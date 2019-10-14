@@ -312,6 +312,17 @@ static inline void snd_sof_ipc_msg_data(struct snd_sof_dev *sdev,
 	sof_ops(sdev)->ipc_msg_data(sdev, substream, p, sz);
 }
 
+/* MFD */
+static inline void snd_sof_register_clients(struct snd_sof_dev *sdev)
+{
+	sof_ops(sdev)->register_clients(sdev);
+}
+
+static inline void snd_sof_unregister_clients(struct snd_sof_dev *sdev)
+{
+	sof_ops(sdev)->unregister_clients(sdev);
+}
+
 static inline const struct snd_sof_dsp_ops
 *sof_get_ops(const struct sof_dev_desc *d,
 	     const struct sof_ops_table mach_ops[], int asize)

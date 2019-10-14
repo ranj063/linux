@@ -18,6 +18,7 @@
 #include "../ops.h"
 #include "../sof-audio.h"
 #include "shim.h"
+#include "intel-audio.h"
 
 /* DSP memories */
 #define IRAM_OFFSET		0x0C0000
@@ -524,6 +525,10 @@ const struct snd_sof_dsp_ops sof_tng_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* MFD */
+	.register_clients	= intel_register_audio_clients,
+	.unregister_clients	= intel_unregister_audio_clients,
 };
 EXPORT_SYMBOL(sof_tng_ops);
 
@@ -537,13 +542,14 @@ const struct snd_sof_audio_ops sof_tng_audio_ops = {
 
 	/* DAI drivers */
 	.drv = byt_dai,
-	.num_drv = 3, /* we have only 3 SSPs on byt */
+	.num_nocodec_dailinks = ARRAY_SIZE(byt_dai),
 };
 EXPORT_SYMBOL(sof_tng_audio_ops);
 
 const struct sof_intel_dsp_desc tng_chip_info = {
 	.cores_num = 1,
 	.cores_mask = 1,
+	.num_ssp_drv = ARRAY_SIZE(byt_dai),
 };
 EXPORT_SYMBOL(tng_chip_info);
 
@@ -690,6 +696,10 @@ const struct snd_sof_dsp_ops sof_byt_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* MFD */
+	.register_clients	= intel_register_audio_clients,
+	.unregister_clients	= intel_unregister_audio_clients,
 };
 EXPORT_SYMBOL(sof_byt_ops);
 
@@ -703,13 +713,14 @@ const struct snd_sof_audio_ops sof_byt_audio_ops = {
 
 	/* DAI drivers */
 	.drv = byt_dai,
-	.num_drv = 3, /* we have only 3 SSPs on byt*/
+	.num_nocodec_dailinks = 3, /* we have only 3 SSPs on byt*/
 };
 EXPORT_SYMBOL(sof_byt_audio_ops);
 
 const struct sof_intel_dsp_desc byt_chip_info = {
 	.cores_num = 1,
 	.cores_mask = 1,
+	.num_ssp_drv = 3, /* we have only 3 SSPs on byt */
 };
 EXPORT_SYMBOL(byt_chip_info);
 
@@ -754,6 +765,10 @@ const struct snd_sof_dsp_ops sof_cht_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* MFD */
+	.register_clients	= intel_register_audio_clients,
+	.unregister_clients	= intel_unregister_audio_clients,
 };
 EXPORT_SYMBOL(sof_cht_ops);
 
@@ -768,13 +783,14 @@ const struct snd_sof_audio_ops sof_cht_audio_ops = {
 	/* DAI drivers */
 	.drv = byt_dai,
 	/* all 6 SSPs may be available for cherrytrail */
-	.num_drv = ARRAY_SIZE(byt_dai),
+	.num_nocodec_dailinks = ARRAY_SIZE(byt_dai),
 };
 EXPORT_SYMBOL(sof_cht_audio_ops);
 
 const struct sof_intel_dsp_desc cht_chip_info = {
 	.cores_num = 1,
 	.cores_mask = 1,
+	.num_ssp_drv = ARRAY_SIZE(byt_dai),
 };
 EXPORT_SYMBOL(cht_chip_info);
 

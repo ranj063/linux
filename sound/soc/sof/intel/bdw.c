@@ -18,6 +18,7 @@
 #include "../ops.h"
 #include "../sof-audio.h"
 #include "shim.h"
+#include "intel-audio.h"
 
 /* BARs */
 #define BDW_DSP_BAR 0
@@ -584,6 +585,10 @@ const struct snd_sof_dsp_ops sof_bdw_ops = {
 
 	/*Firmware loading */
 	.load_firmware	= snd_sof_load_firmware_memcpy,
+
+	/* MFD */
+	.register_clients	= intel_register_audio_clients,
+	.unregister_clients	= intel_unregister_audio_clients,
 };
 EXPORT_SYMBOL(sof_bdw_ops);
 
@@ -597,13 +602,14 @@ const struct snd_sof_audio_ops sof_bdw_audio_ops = {
 
 	/* DAI drivers */
 	.drv = bdw_dai,
-	.num_drv = ARRAY_SIZE(bdw_dai)
+	.num_nocodec_dailinks = ARRAY_SIZE(bdw_dai),
 };
 EXPORT_SYMBOL(sof_bdw_audio_ops);
 
 const struct sof_intel_dsp_desc bdw_chip_info = {
 	.cores_num = 1,
 	.cores_mask = 1,
+	.num_ssp_drv = ARRAY_SIZE(bdw_dai),
 };
 EXPORT_SYMBOL(bdw_chip_info);
 

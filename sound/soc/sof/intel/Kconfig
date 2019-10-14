@@ -13,6 +13,8 @@ config SND_SOC_SOF_INTEL_ACPI
 	tristate
 	select SND_SOC_SOF_BAYTRAIL  if SND_SOC_SOF_BAYTRAIL_SUPPORT
 	select SND_SOC_SOF_BROADWELL if SND_SOC_SOF_BROADWELL_SUPPORT
+	select SND_SOC_SOF_SSP
+	select SND_SOC_SOF_INTEL_AUDIO
 	help
 	  This option is not user-selectable but automagically handled by
 	  'select' statements at a higher level
@@ -29,11 +31,19 @@ config SND_SOC_SOF_INTEL_PCI
 	select SND_SOC_SOF_COMETLAKE_H if SND_SOC_SOF_COMETLAKE_H_SUPPORT
 	select SND_SOC_SOF_TIGERLAKE   if SND_SOC_SOF_TIGERLAKE_SUPPORT
 	select SND_SOC_SOF_ELKHARTLAKE if SND_SOC_SOF_ELKHARTLAKE_SUPPORT
+	select SND_SOC_SOF_SSP
+	select SND_SOC_SOF_INTEL_AUDIO
 	help
 	  This option is not user-selectable but automagically handled by
 	  'select' statements at a higher level
 
 config SND_SOC_SOF_INTEL_HIFI_EP_IPC
+	tristate
+	help
+          This option is not user-selectable but automagically handled by
+	  'select' statements at a higher level
+
+config SND_SOC_SOF_INTEL_AUDIO
 	tristate
 	help
           This option is not user-selectable but automagically handled by
@@ -258,6 +268,7 @@ config SND_SOC_SOF_HDA_LINK
 	bool "SOF support for HDA Links(HDA/HDMI)"
 	depends on SND_SOC_SOF_NOCODEC=n
 	select SND_SOC_SOF_PROBE_WORK_QUEUE
+	select SND_SOC_SOF_DMIC
 	help
 	  This adds support for HDA links(HDA/HDMI) with Sound Open Firmware
 		  for Intel(R) platforms.
@@ -296,11 +307,27 @@ config SND_SOC_SOF_HDA
 	tristate
 	select SND_HDA_EXT_CORE if SND_SOC_SOF_HDA_LINK
 	select SND_SOC_HDAC_HDA if SND_SOC_SOF_HDA_AUDIO_CODEC
-	select SND_INTEL_NHLT if ACPI
 	help
 	  This option is not user-selectable but automagically handled by
 	  'select' statements at a higher level
 
 endif ## SND_SOC_SOF_INTEL_PCI
+
+config SND_SOC_SOF_DMIC_MACHINE
+	tristate
+
+config SND_SOC_SOF_DMIC
+	tristate
+	select SND_SOC_SOF_DMIC_MACHINE
+	select SND_INTEL_NHLT if ACPI
+	help
+	  This option is not user-selectable but automagically handled by
+	  'select' statements at a higher level
+
+config SND_SOC_SOF_SSP
+	tristate
+	help
+	  This option is not user-selectable but automagically handled by
+	  'select' statements at a higher level
 
 endif ## SND_SOC_SOF_INTEL_TOPLEVEL

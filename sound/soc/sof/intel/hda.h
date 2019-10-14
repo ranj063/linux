@@ -343,11 +343,9 @@
 	(HDA_DSP_BDL_SIZE / sizeof(struct sof_intel_dsp_bdl))
 
 /* Number of DAIs */
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
-#define SOF_SKL_NUM_DAIS		14
-#else
-#define SOF_SKL_NUM_DAIS		8
-#endif
+#define SOF_SKL_NUM_HDA_DAIS		6
+#define SOF_SKL_NUM_DMIC_DAIS		2
+#define SOF_SKL_NUM_SSP_DAIS		6
 
 /* Intel HD Audio SRAM Window 0*/
 #define HDA_ADSP_SRAM0_BASE_SKL		0x8000
@@ -621,5 +619,11 @@ extern const struct sof_intel_dsp_desc skl_chip_info;
 extern const struct sof_intel_dsp_desc icl_chip_info;
 extern const struct sof_intel_dsp_desc tgl_chip_info;
 extern const struct sof_intel_dsp_desc ehl_chip_info;
+
+/* DMIC set up */
+int sof_dmic_setup(struct device *dev,
+		   struct sof_audio_dev *sof_audio,
+		   struct snd_soc_acpi_mach *mach,
+		   const struct sof_intel_dsp_desc *chip);
 
 #endif
