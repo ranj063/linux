@@ -208,6 +208,8 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 		goto fw_run_err;
 	}
 
+	/* just a test */
+
 	if (IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_ENABLE_FIRMWARE_TRACE) ||
 	    (sof_core_debug & SOF_DBG_ENABLE_TRACE)) {
 		sdev->dtrace_is_supported = true;
