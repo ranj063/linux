@@ -393,6 +393,10 @@ struct snd_sof_dai {
 struct snd_sof_client {
 	struct platform_device *pdev;
 
+	/* IPC RX callback */
+	void (*sof_client_rx_cb)(struct snd_sof_client *client,
+				 u32 msg_cmd);
+
 	void *client_data; /* core does not touch this */
 };
 
@@ -488,6 +492,9 @@ struct snd_sof_dev {
 
 	/* client devices */
 	struct snd_sof_client *sof_audio;
+
+	/* IPC rx client table */
+	struct list_head ipc_rx_list;
 
 	void *private;			/* core does not touch this */
 };
