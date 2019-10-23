@@ -499,6 +499,12 @@ struct snd_sof_dev {
 	void *private;			/* core does not touch this */
 };
 
+struct ipc_rx_client {
+	u32 ipc_cmd;
+	struct device *dev;
+	struct list_head list;	/* list in sdev ipc_rx_list */
+};
+
 /*
  * Device Level.
  */
@@ -550,6 +556,7 @@ int snd_sof_ipc_valid(struct snd_sof_dev *sdev);
 int sof_ipc_tx_message(struct snd_sof_ipc *ipc, u32 header,
 		       void *msg_data, size_t msg_bytes, void *reply_data,
 		       size_t reply_bytes);
+
 struct snd_sof_widget *snd_sof_find_swidget(struct snd_sof_dev *sdev,
 					    const char *name);
 struct snd_sof_widget *snd_sof_find_swidget_sname(struct snd_sof_dev *sdev,
@@ -611,6 +618,8 @@ int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
 int sof_load_pipeline_ipc(struct snd_sof_dev *sdev,
 			  struct sof_ipc_pipe_new *pipeline,
 			  struct sof_ipc_comp_reply *r);
+void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
+			     struct ipc_rx_client *rx_client);
 
 /*
  * Trace/debug
