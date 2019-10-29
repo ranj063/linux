@@ -132,6 +132,7 @@ static int sof_restore_kcontrols(struct device *dev)
 
 static int sof_restore_pipelines(struct device *dev)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
 	struct snd_sof_widget *swidget;
 	struct snd_sof_route *sroute;
@@ -187,7 +188,7 @@ static int sof_restore_pipelines(struct device *dev)
 	}
 
 	/* restore pipeline connections */
-	list_for_each_entry_reverse(sroute, &sdev->route_list, list) {
+	list_for_each_entry_reverse(sroute, &sof_audio->route_list, list) {
 		struct sof_ipc_pipe_comp_connect *connect;
 		struct sof_ipc_reply reply;
 

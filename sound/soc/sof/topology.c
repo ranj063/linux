@@ -3126,6 +3126,7 @@ found:
 static int sof_route_load(struct snd_soc_component *scomp, int index,
 			  struct snd_soc_dapm_route *route)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_pipe_comp_connect *connect;
 	struct snd_sof_widget *source_swidget, *sink_swidget;
@@ -3236,7 +3237,7 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 		sroute->private = connect;
 
 		/* add route to route list */
-		list_add(&sroute->list, &sdev->route_list);
+		list_add(&sroute->list, &sof_audio->route_list);
 
 		return ret;
 	}
