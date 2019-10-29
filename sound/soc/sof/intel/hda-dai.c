@@ -12,6 +12,7 @@
 #include <sound/hdaudio_ext.h>
 #include "../sof-priv.h"
 #include "../sof-client.h"
+#include "../sof-audio.h"
 #include "hda.h"
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
@@ -156,12 +157,13 @@ static int hda_link_config_ipc(struct sof_intel_hda_stream *hda_stream,
 			       struct snd_soc_component *scomp,
 			       const char *dai_name, int channel, int dir)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct sof_ipc_dai_config *config;
 	struct snd_sof_dai *sof_dai;
 	struct sof_ipc_reply reply;
 	int ret = 0;
 
-	list_for_each_entry(sof_dai, &hda_stream->sdev->dai_list, list) {
+	list_for_each_entry(sof_dai, &sof_audio->dai_list, list) {
 		if (!sof_dai->cpu_dai_name)
 			continue;
 

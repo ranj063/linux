@@ -15,6 +15,20 @@
 #include "sof-audio.h"
 #include "ops.h"
 
+struct snd_sof_dai *snd_sof_find_dai(struct snd_soc_component *scomp,
+				     const char *name)
+{
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_dai *dai;
+
+	list_for_each_entry(dai, &sof_audio->dai_list, list) {
+		if (dai->name && (strcmp(name, dai->name) == 0))
+			return dai;
+	}
+
+	return NULL;
+}
+
 /*
  * SOF Driver enumeration.
  */
@@ -215,7 +229,7 @@ static int sof_restore_pipelines(struct device *dev)
 	}
 
 	/* restore dai links */
-	list_for_each_entry_reverse(dai, &sdev->dai_list, list) {
+	list_for_each_entry_reverse(dai, &sof_audio->dai_list, list) {
 		struct sof_ipc_reply reply;
 		struct sof_ipc_dai_config *config = dai->dai_config;
 

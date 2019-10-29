@@ -15,6 +15,7 @@
 #include <sound/sof.h>
 #include "sof-priv.h"
 #include "sof-client.h"
+#include "sof-audio.h"
 #include "ops.h"
 
 /* Create DMA buffer page table for DSP */
@@ -643,7 +644,7 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 		snd_soc_rtdcom_lookup(rtd, DRV_NAME);
 	struct snd_sof_dev *sdev = dev_get_drvdata(component->dev->parent);
 	struct snd_sof_dai *dai =
-		snd_sof_find_dai(sdev, (char *)rtd->dai_link->name);
+		snd_sof_find_dai(component, (char *)rtd->dai_link->name);
 
 	/* no topology exists for this BE, try a common configuration */
 	if (!dai) {
