@@ -639,9 +639,9 @@ int snd_sof_ipc_set_get_comp_data(struct snd_sof_control *scontrol,
 
 	/* send normal size ipc in one part */
 	if (cdata->rhdr.hdr.size <= SOF_IPC_MSG_MAX_SIZE) {
-		err = sof_ipc_tx_message(sdev->ipc, cdata->rhdr.hdr.cmd, cdata,
-					 cdata->rhdr.hdr.size, cdata,
-					 cdata->rhdr.hdr.size);
+		err = sof_client_tx_message(scomp->dev, cdata->rhdr.hdr.cmd,
+					    cdata, cdata->rhdr.hdr.size, cdata,
+					    cdata->rhdr.hdr.size);
 
 		if (err < 0)
 			dev_err(sdev->dev, "error: set/get ctrl ipc comp %d\n",
