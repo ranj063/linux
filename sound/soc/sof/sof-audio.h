@@ -11,6 +11,12 @@
 #ifndef __SOUND_SOC_SOF_AUDIO_H
 #define __SOUND_SOC_SOF_AUDIO_H
 
+#include <sound/sof/stream.h> /* needs to be included before control.h */
+#include <sound/sof/control.h>
+#include <sound/sof/dai.h>
+#include <sound/sof/topology.h>
+#include "sof-priv.h"
+
 struct snd_sof_led_control {
 	unsigned int use_led;
 	unsigned int direction;
@@ -85,5 +91,27 @@ snd_sof_find_swidget_sname(struct snd_soc_component *scomp,
 
 struct snd_sof_dai *snd_sof_find_dai(struct snd_soc_component *scomp,
 				     const char *name);
+
+static inline
+struct snd_sof_pcm *snd_sof_find_spcm_dai(struct sof_audio_dev *sof_audio,
+					  struct snd_soc_pcm_runtime *rtd)
+{
+	struct snd_sof_pcm *spcm = NULL;
+
+	list_for_each_entry(spcm, &sof_audio->pcm_list, list) {
+		if (le32_to_cpu(spcm->pcm.dai_id) == rtd->dai_link->id)
+			return spcm;
+	}
+
+	return NULL;
+}
+
+struct snd_sof_pcm *snd_sof_find_spcm_name(struct snd_soc_component *scomp,
+					   const char *name);
+struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_soc_component *scomp,
+					   unsigned int comp_id,
+					   int *direction);
+struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_soc_component *scomp,
+					     unsigned int pcm_id);
 
 #endif

@@ -56,7 +56,6 @@ static int ipc_pcm_params(struct snd_sof_widget *swidget, int dir)
 {
 	struct sof_ipc_pcm_params_reply ipc_params_reply;
 	struct snd_soc_component *scomp = swidget->scomp;
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_pcm_params pcm;
 	struct snd_pcm_hw_params *params;
 	struct snd_sof_pcm *spcm;
@@ -65,9 +64,9 @@ static int ipc_pcm_params(struct snd_sof_widget *swidget, int dir)
 	memset(&pcm, 0, sizeof(pcm));
 
 	/* get runtime PCM params using widget's stream name */
-	spcm = snd_sof_find_spcm_name(sdev, swidget->widget->sname);
+	spcm = snd_sof_find_spcm_name(scomp, swidget->widget->sname);
 	if (!spcm) {
-		dev_err(sdev->dev, "error: cannot find PCM for %s\n",
+		dev_err(scomp->dev, "error: cannot find PCM for %s\n",
 			swidget->widget->name);
 		return -EINVAL;
 	}
@@ -102,10 +101,11 @@ static int ipc_pcm_params(struct snd_sof_widget *swidget, int dir)
 	}
 
 	/* send IPC to the DSP */
-	ret = sof_ipc_tx_message(sdev->ipc, pcm.hdr.cmd, &pcm, sizeof(pcm),
-				 &ipc_params_reply, sizeof(ipc_params_reply));
+	ret = sof_client_tx_message(scomp->dev, pcm.hdr.cmd, &pcm, sizeof(pcm),
+				    &ipc_params_reply,
+				    sizeof(ipc_params_reply));
 	if (ret < 0)
-		dev_err(sdev->dev, "error: pcm params failed for %s\n",
+		dev_err(scomp->dev, "error: pcm params failed for %s\n",
 			swidget->widget->name);
 
 	return ret;
@@ -115,7 +115,6 @@ static int ipc_pcm_params(struct snd_sof_widget *swidget, int dir)
 static int ipc_trigger(struct snd_sof_widget *swidget, int cmd)
 {
 	struct snd_soc_component *scomp = swidget->scomp;
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_stream stream;
 	struct sof_ipc_reply reply;
 	int ret = 0;
@@ -126,10 +125,10 @@ static int ipc_trigger(struct snd_sof_widget *swidget, int cmd)
 	stream.comp_id = swidget->comp_id;
 
 	/* send IPC to the DSP */
-	ret = sof_ipc_tx_message(sdev->ipc, stream.hdr.cmd, &stream,
-				 sizeof(stream), &reply, sizeof(reply));
+	ret = sof_client_tx_message(scomp->dev, stream.hdr.cmd, &stream,
+				    sizeof(stream), &reply, sizeof(reply));
 	if (ret < 0)
-		dev_err(sdev->dev, "error: failed to trigger %s\n",
+		dev_err(scomp->dev, "error: failed to trigger %s\n",
 			swidget->widget->name);
 
 	return ret;
@@ -152,7 +151,7 @@ static int sof_keyword_dapm_event(struct snd_soc_dapm_widget *w,
 		event, w->name);
 
 	/* get runtime PCM params using widget's stream name */
-	spcm = snd_sof_find_spcm_name(sdev, swidget->widget->sname);
+	spcm = snd_sof_find_spcm_name(scomp, swidget->widget->sname);
 	if (!spcm) {
 		dev_err(sdev->dev, "error: cannot find PCM for %s\n",
 			swidget->widget->name);
@@ -2331,6 +2330,7 @@ static int sof_dai_load(struct snd_soc_component *scomp, int index,
 			struct snd_soc_dai_driver *dai_drv,
 			struct snd_soc_tplg_pcm *pcm, struct snd_soc_dai *dai)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_stream_caps *caps;
 	struct snd_soc_tplg_private *private = &pcm->priv;
@@ -2354,7 +2354,7 @@ static int sof_dai_load(struct snd_soc_component *scomp, int index,
 	dev_dbg(sdev->dev, "tplg: load pcm %s\n", pcm->dai_name);
 
 	dai_drv->dobj.private = spcm;
-	list_add(&spcm->list, &sdev->pcm_list);
+	list_add(&spcm->list, &sof_audio->pcm_list);
 
 	ret = sof_parse_tokens(scomp, spcm, stream_tokens,
 			       ARRAY_SIZE(stream_tokens), private->array,

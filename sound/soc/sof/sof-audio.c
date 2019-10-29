@@ -15,6 +15,68 @@
 #include "sof-audio.h"
 #include "ops.h"
 
+/*
+ * Generic object lookup APIs.
+ */
+struct snd_sof_pcm *snd_sof_find_spcm_name(struct snd_soc_component *scomp,
+					   const char *name)
+{
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_pcm *spcm;
+
+	list_for_each_entry(spcm, &sof_audio->pcm_list, list) {
+		/* match with PCM dai name */
+		if (strcmp(spcm->pcm.dai_name, name) == 0)
+			return spcm;
+
+		/* match with playback caps name if set */
+		if (*spcm->pcm.caps[0].name &&
+		    !strcmp(spcm->pcm.caps[0].name, name))
+			return spcm;
+
+		/* match with capture caps name if set */
+		if (*spcm->pcm.caps[1].name &&
+		    !strcmp(spcm->pcm.caps[1].name, name))
+			return spcm;
+	}
+
+	return NULL;
+}
+
+struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_soc_component *scomp,
+					   unsigned int comp_id,
+					   int *direction)
+{
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_pcm *spcm;
+	int i = 0;
+
+	list_for_each_entry(spcm, &sof_audio->pcm_list, list) {
+		for (i = 0; i <= SNDRV_PCM_STREAM_CAPTURE; i++) {
+			if (spcm->stream[i].comp_id == comp_id) {
+				*direction = i;
+				return spcm;
+			}
+		}
+	}
+
+	return NULL;
+}
+
+struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_soc_component *scomp,
+					     unsigned int pcm_id)
+{
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_pcm *spcm;
+
+	list_for_each_entry(spcm, &sof_audio->pcm_list, list) {
+		if (le32_to_cpu(spcm->pcm.pcm_id) == pcm_id)
+			return spcm;
+	}
+
+	return NULL;
+}
+
 struct snd_sof_widget *snd_sof_find_swidget(struct snd_soc_component *scomp,
 					    const char *name)
 {
@@ -103,6 +165,7 @@ static int sof_machine_check(struct snd_sof_dev *sdev)
 
 static int sof_set_hw_params_upon_resume(struct device *dev)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
 	struct snd_pcm_substream *substream;
 	struct snd_sof_pcm *spcm;
@@ -114,7 +177,7 @@ static int sof_set_hw_params_upon_resume(struct device *dev)
 	 * So, set the flag to indicate this for those streams that
 	 * have been suspended.
 	 */
-	list_for_each_entry(spcm, &sdev->pcm_list, list) {
+	list_for_each_entry(spcm, &sof_audio->pcm_list, list) {
 		for (dir = 0; dir <= SNDRV_PCM_STREAM_CAPTURE; dir++) {
 			substream = spcm->stream[dir].substream;
 			if (!substream || !substream->runtime)
