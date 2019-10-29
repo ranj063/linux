@@ -172,7 +172,7 @@ static int hda_link_config_ipc(struct sof_intel_hda_stream *hda_stream,
 			config = sof_dai->dai_config;
 
 			if (!config) {
-				dev_err(hda_stream->sdev->dev,
+				dev_err(scomp->dev,
 					"error: no config for DAI %s\n",
 					sof_dai->name);
 				return -EINVAL;
@@ -189,7 +189,7 @@ static int hda_link_config_ipc(struct sof_intel_hda_stream *hda_stream,
 						    &reply, sizeof(reply));
 
 			if (ret < 0)
-				dev_err(hda_stream->sdev->dev,
+				dev_err(scomp->dev,
 					"error: failed to set dai config for %s\n",
 					sof_dai->name);
 
