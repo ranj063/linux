@@ -16,8 +16,6 @@
 #include "sof-priv.h"
 #include "ops.h"
 
-#define DRV_NAME	"sof-audio-component"
-
 /* Create DMA buffer page table for DSP */
 static int create_page_table(struct snd_soc_component *component,
 			     struct snd_pcm_substream *substream,
