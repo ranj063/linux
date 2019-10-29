@@ -20,6 +20,7 @@
 
 struct snd_soc_tplg_ops;
 struct snd_soc_component;
+struct sof_audio_dev;
 
 struct snd_sof_audio_ops {
 
@@ -153,6 +154,16 @@ struct snd_sof_dai {
 
 /* SOF audio device */
 struct sof_audio_dev {
+	const char *platform;
+	const char *drv_name;
+
+	/* machine */
+	struct platform_device *pdev_mach;
+	const struct snd_soc_acpi_mach *machine;
+
+	const char *tplg_filename_prefix;
+	const char *tplg_filename;
+
 	/*
 	 * ASoC components. plat_drv fields are set dynamically so
 	 * can't use const
