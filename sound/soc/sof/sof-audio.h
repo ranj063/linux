@@ -63,6 +63,12 @@ int snd_sof_ipc_set_get_comp_data(struct snd_sof_control *scontrol,
 				  enum sof_ipc_ctrl_cmd ctrl_cmd,
 				  bool send);
 
+struct snd_sof_widget *snd_sof_find_swidget(struct snd_soc_component *scomp,
+					    const char *name);
+struct snd_sof_widget *
+snd_sof_find_swidget_sname(struct snd_soc_component *scomp,
+			   const char *pcm_name, int dir);
+
 struct snd_sof_dai *snd_sof_find_dai(struct snd_soc_component *scomp,
 				     const char *name);
 

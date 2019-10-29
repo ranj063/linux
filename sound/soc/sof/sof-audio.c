@@ -15,6 +15,43 @@
 #include "sof-audio.h"
 #include "ops.h"
 
+struct snd_sof_widget *snd_sof_find_swidget(struct snd_soc_component *scomp,
+					    const char *name)
+{
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_widget *swidget;
+
+	list_for_each_entry(swidget, &sof_audio->widget_list, list) {
+		if (strcmp(name, swidget->widget->name) == 0)
+			return swidget;
+	}
+
+	return NULL;
+}
+
+/* find widget by stream name and direction */
+struct snd_sof_widget *
+snd_sof_find_swidget_sname(struct snd_soc_component *scomp,
+			   const char *pcm_name, int dir)
+{
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_widget *swidget;
+	enum snd_soc_dapm_type type;
+
+	if (dir == SNDRV_PCM_STREAM_PLAYBACK)
+		type = snd_soc_dapm_aif_in;
+	else
+		type = snd_soc_dapm_aif_out;
+
+	list_for_each_entry(swidget, &sof_audio->widget_list, list) {
+		if (!strcmp(pcm_name, swidget->widget->sname) &&
+		    swidget->id == type)
+			return swidget;
+	}
+
+	return NULL;
+}
+
 struct snd_sof_dai *snd_sof_find_dai(struct snd_soc_component *scomp,
 				     const char *name)
 {
@@ -156,7 +193,7 @@ static int sof_restore_pipelines(struct device *dev)
 	int ret;
 
 	/* restore pipeline components */
-	list_for_each_entry_reverse(swidget, &sdev->widget_list, list) {
+	list_for_each_entry_reverse(swidget, &sof_audio->widget_list, list) {
 		struct sof_ipc_comp_reply r;
 
 		/* skip if there is no private data */
@@ -263,7 +300,7 @@ static int sof_restore_pipelines(struct device *dev)
 	}
 
 	/* complete pipeline */
-	list_for_each_entry(swidget, &sdev->widget_list, list) {
+	list_for_each_entry(swidget, &sof_audio->widget_list, list) {
 		switch (swidget->id) {
 		case snd_soc_dapm_scheduler:
 			swidget->complete =
@@ -285,13 +322,13 @@ static int sof_restore_pipelines(struct device *dev)
 
 static int sof_destroy_pipelines(struct device *dev)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
+	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
 	struct snd_sof_widget *swidget;
 	struct sof_ipc_free ipc_free;
 	struct sof_ipc_reply reply;
 	int ret = 0;
 
-	list_for_each_entry_reverse(swidget, &sdev->widget_list, list) {
+	list_for_each_entry_reverse(swidget, &sof_audio->widget_list, list) {
 		memset(&ipc_free, 0, sizeof(ipc_free));
 
 		/* skip if there is no private data */

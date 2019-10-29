@@ -1336,16 +1336,16 @@ static int sof_widget_load_buffer(struct snd_soc_component *scomp, int index,
 }
 
 /* bind PCM ID to host component ID */
-static int spcm_bind(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
+static int spcm_bind(struct snd_soc_component *scomp, struct snd_sof_pcm *spcm,
 		     int dir)
 {
 	struct snd_sof_widget *host_widget;
 
-	host_widget = snd_sof_find_swidget_sname(sdev,
+	host_widget = snd_sof_find_swidget_sname(scomp,
 						 spcm->pcm.caps[dir].name,
 						 dir);
 	if (!host_widget) {
-		dev_err(sdev->dev, "can't find host comp to bind pcm\n");
+		dev_err(scomp->dev, "can't find host comp to bind pcm\n");
 		return -EINVAL;
 	}
 
@@ -1485,7 +1485,7 @@ static int sof_widget_load_pipeline(struct snd_soc_component *scomp,
 	pipeline->comp_id = swidget->comp_id;
 
 	/* component at start of pipeline is our stream id */
-	comp_swidget = snd_sof_find_swidget(sdev, tw->sname);
+	comp_swidget = snd_sof_find_swidget(scomp, tw->sname);
 	if (!comp_swidget) {
 		dev_err(sdev->dev, "error: widget %s refers to non existent widget %s\n",
 			tw->name, tw->sname);
@@ -2214,7 +2214,7 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 	}
 
 	w->dobj.private = swidget;
-	list_add(&swidget->list, &sdev->widget_list);
+	list_add(&swidget->list, &sof_audio->widget_list);
 	return ret;
 }
 
@@ -2384,7 +2384,7 @@ static int sof_dai_load(struct snd_soc_component *scomp, int index,
 	}
 
 	/* bind pcm to host comp */
-	ret = spcm_bind(sdev, spcm, stream);
+	ret = spcm_bind(scomp, spcm, stream);
 	if (ret) {
 		dev_err(sdev->dev,
 			"error: can't bind pcm to host\n");
@@ -2413,7 +2413,7 @@ capture:
 	}
 
 	/* bind pcm to host comp */
-	ret = spcm_bind(sdev, spcm, stream);
+	ret = spcm_bind(scomp, spcm, stream);
 	if (ret) {
 		dev_err(sdev->dev,
 			"error: can't bind pcm to host\n");
@@ -3160,7 +3160,7 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 		route->source);
 
 	/* source component */
-	source_swidget = snd_sof_find_swidget(sdev, (char *)route->source);
+	source_swidget = snd_sof_find_swidget(scomp, (char *)route->source);
 	if (!source_swidget) {
 		dev_err(sdev->dev, "error: source %s not found\n",
 			route->source);
@@ -3181,7 +3181,7 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 	connect->source_id = source_swidget->comp_id;
 
 	/* sink component */
-	sink_swidget = snd_sof_find_swidget(sdev, (char *)route->sink);
+	sink_swidget = snd_sof_find_swidget(scomp, (char *)route->sink);
 	if (!sink_swidget) {
 		dev_err(sdev->dev, "error: sink %s not found\n",
 			route->sink);
@@ -3322,11 +3322,12 @@ int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
 /* completion - called at completion of firmware loading */
 static void sof_complete(struct snd_soc_component *scomp)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_widget *swidget;
 
 	/* some widget types require completion notificattion */
-	list_for_each_entry(swidget, &sdev->widget_list, list) {
+	list_for_each_entry(swidget, &sof_audio->widget_list, list) {
 		if (swidget->complete)
 			continue;
 
