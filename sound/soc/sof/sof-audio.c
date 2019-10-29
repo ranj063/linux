@@ -81,6 +81,7 @@ static int sof_set_hw_params_upon_resume(struct device *dev)
 
 static int sof_restore_kcontrols(struct device *dev)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
 	struct snd_soc_component *scomp;
 	struct snd_sof_control *scontrol;
@@ -88,7 +89,7 @@ static int sof_restore_kcontrols(struct device *dev)
 	int ret = 0;
 
 	/* restore kcontrol values */
-	list_for_each_entry(scontrol, &sdev->kcontrol_list, list) {
+	list_for_each_entry(scontrol, &sof_audio->kcontrol_list, list) {
 		/* reset readback offset for scontrol after resuming */
 		scontrol->readback_offset = 0;
 
@@ -336,6 +337,7 @@ static const struct dev_pm_ops sof_audio_pm = {
 
 static int sof_audio_probe(struct platform_device *pdev)
 {
+	struct snd_sof_client *audio_client = dev_get_platdata(&pdev->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(pdev->dev.parent);
 	struct snd_sof_pdata *plat_data = sdev->pdata;
 	struct snd_soc_acpi_mach *machine =

@@ -13,6 +13,8 @@
 #include <sound/pcm_params.h>
 #include <uapi/sound/sof/tokens.h>
 #include "sof-priv.h"
+#include "sof-client.h"
+#include "sof-audio.h"
 #include "ops.h"
 
 #define COMP_ID_UNASSIGNED		0xffffffff
@@ -1099,6 +1101,7 @@ static int sof_control_load(struct snd_soc_component *scomp, int index,
 			    struct snd_kcontrol_new *kc,
 			    struct snd_soc_tplg_ctl_hdr *hdr)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct soc_mixer_control *sm;
 	struct soc_bytes_ext *sbe;
 	struct soc_enum *se;
@@ -1150,7 +1153,7 @@ static int sof_control_load(struct snd_soc_component *scomp, int index,
 	}
 
 	dobj->private = scontrol;
-	list_add(&scontrol->list, &sdev->kcontrol_list);
+	list_add(&scontrol->list, &sof_audio->kcontrol_list);
 	return ret;
 }
 
@@ -1623,6 +1626,7 @@ static int sof_widget_load_pga(struct snd_soc_component *scomp, int index,
 			       struct snd_soc_tplg_dapm_widget *tw,
 			       struct sof_ipc_comp_reply *r)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_tplg_private *private = &tw->priv;
 	struct sof_ipc_comp_volume *volume;
@@ -1671,7 +1675,7 @@ static int sof_widget_load_pga(struct snd_soc_component *scomp, int index,
 
 	swidget->private = volume;
 
-	list_for_each_entry(scontrol, &sdev->kcontrol_list, list) {
+	list_for_each_entry(scontrol, &sof_audio->kcontrol_list, list) {
 		if (scontrol->comp_id == swidget->comp_id &&
 		    scontrol->volume_table) {
 			min_step = scontrol->min_volume_step;
@@ -2089,6 +2093,7 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 			    struct snd_soc_dapm_widget *w,
 			    struct snd_soc_tplg_dapm_widget *tw)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_widget *swidget;
 	struct snd_sof_dai *dai;
@@ -2140,7 +2145,7 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 	case snd_soc_dapm_pga:
 		ret = sof_widget_load_pga(scomp, index, swidget, tw, &reply);
 		/* Find scontrol for this pga and set readback offset*/
-		list_for_each_entry(scontrol, &sdev->kcontrol_list, list) {
+		list_for_each_entry(scontrol, &sof_audio->kcontrol_list, list) {
 			if (scontrol->comp_id == swidget->comp_id) {
 				scontrol->readback_offset = reply.offset;
 				break;
@@ -3245,13 +3250,15 @@ err:
 /* Function to set the initial value of SOF kcontrols.
  * The value will be stored in scontrol->control_data
  */
-static int snd_sof_cache_kcontrol_val(struct snd_sof_dev *sdev)
+static int snd_sof_cache_kcontrol_val(struct snd_soc_component *scomp)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_control *scontrol = NULL;
 	int ipc_cmd, ctrl_type;
 	int ret = 0;
 
-	list_for_each_entry(scontrol, &sdev->kcontrol_list, list) {
+	list_for_each_entry(scontrol, &sof_audio->kcontrol_list, list) {
 
 		/* notify DSP of kcontrol values */
 		switch (scontrol->cmd) {
@@ -3266,7 +3273,7 @@ static int snd_sof_cache_kcontrol_val(struct snd_sof_dev *sdev)
 			ctrl_type = SOF_CTRL_TYPE_DATA_GET;
 			break;
 		default:
-			dev_err(sdev->dev,
+			dev_err(scomp->dev,
 				"error: Invalid scontrol->cmd: %d\n",
 				scontrol->cmd);
 			return -EINVAL;
@@ -3276,9 +3283,9 @@ static int snd_sof_cache_kcontrol_val(struct snd_sof_dev *sdev)
 						    scontrol->cmd,
 						    false);
 		if (ret < 0) {
-			dev_warn(sdev->dev,
-				"error: kcontrol value get for widget: %d\n",
-				scontrol->comp_id);
+			dev_warn(scomp->dev,
+				 "error: kcontrol value get for widget: %d\n",
+				 scontrol->comp_id);
 		}
 	}
 
@@ -3332,7 +3339,7 @@ static void sof_complete(struct snd_soc_component *scomp)
 	 * cache initial values of SOF kcontrols by reading DSP value over
 	 * IPC. It may be overwritten by alsa-mixer after booting up
 	 */
-	snd_sof_cache_kcontrol_val(sdev);
+	snd_sof_cache_kcontrol_val(scomp);
 }
 
 /* manifest - optional to inform component of manifest */
