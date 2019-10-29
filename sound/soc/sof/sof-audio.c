@@ -83,7 +83,6 @@ static int sof_restore_kcontrols(struct device *dev)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
-	struct snd_soc_component *scomp;
 	struct snd_sof_control *scontrol;
 	int ipc_cmd, ctrl_type;
 	int ret = 0;
@@ -100,7 +99,7 @@ static int sof_restore_kcontrols(struct device *dev)
 		case SOF_CTRL_CMD_SWITCH:
 			ipc_cmd = SOF_IPC_COMP_SET_VALUE;
 			ctrl_type = SOF_CTRL_TYPE_VALUE_CHAN_SET;
-			ret = snd_sof_ipc_set_get_comp_data(sdev->ipc, scontrol,
+			ret = snd_sof_ipc_set_get_comp_data(scontrol,
 							    ipc_cmd, ctrl_type,
 							    scontrol->cmd,
 							    true);
@@ -108,7 +107,7 @@ static int sof_restore_kcontrols(struct device *dev)
 		case SOF_CTRL_CMD_BINARY:
 			ipc_cmd = SOF_IPC_COMP_SET_DATA;
 			ctrl_type = SOF_CTRL_TYPE_DATA_SET;
-			ret = snd_sof_ipc_set_get_comp_data(sdev->ipc, scontrol,
+			ret = snd_sof_ipc_set_get_comp_data(scontrol,
 							    ipc_cmd, ctrl_type,
 							    scontrol->cmd,
 							    true);

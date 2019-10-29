@@ -15,6 +15,7 @@
 #include <linux/types.h>
 #include "sof-client.h"
 #include "sof-priv.h"
+#include "sof-audio.h"
 #include "ops.h"
 
 static void ipc_trace_message(struct snd_sof_dev *sdev, u32 msg_id);
@@ -627,23 +628,23 @@ static int sof_set_get_large_ctrl_data(struct snd_sof_dev *sdev,
 	return err;
 }
 
-/*
- * IPC get()/set() for kcontrols.
- */
-int snd_sof_ipc_set_get_comp_data(struct snd_sof_ipc *ipc,
-				  struct snd_sof_control *scontrol,
+int snd_sof_ipc_set_get_comp_data(struct snd_sof_control *scontrol,
 				  u32 ipc_cmd,
 				  enum sof_ipc_ctrl_type ctrl_type,
 				  enum sof_ipc_ctrl_cmd ctrl_cmd,
 				  bool send)
 {
 	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
-	struct snd_sof_dev *sdev = ipc->sdev;
+	struct snd_soc_component *scomp = scontrol->scomp;
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_fw_ready *ready = &sdev->fw_ready;
 	struct sof_ipc_fw_version *v = &ready->version;
 	struct sof_ipc_ctrl_data_params sparams;
 	size_t send_bytes;
 	int err;
+
+	if (!pm_runtime_active(sdev->dev))
+		return 0;
 
 	/* read or write firmware volume */
 	if (scontrol->readback_offset != 0) {

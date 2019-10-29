@@ -330,30 +330,6 @@ struct snd_sof_pcm {
 	bool prepared[2]; /* PCM_PARAMS set successfully */
 };
 
-struct snd_sof_led_control {
-	unsigned int use_led;
-	unsigned int direction;
-	unsigned int led_value;
-};
-
-/* ALSA SOF Kcontrol device */
-struct snd_sof_control {
-	struct snd_sof_dev *sdev;
-	int comp_id;
-	int min_volume_step; /* min volume step for volume_table */
-	int max_volume_step; /* max volume step for volume_table */
-	int num_channels;
-	u32 readback_offset; /* offset to mmaped data if used */
-	struct sof_ipc_ctrl_data *control_data;
-	u32 size;	/* cdata size */
-	enum sof_ipc_ctrl_cmd cmd;
-	u32 *volume_table; /* volume table computed from tlv data*/
-
-	struct list_head list;	/* list in sdev control list */
-
-	struct snd_sof_led_control led_ctl;
-};
-
 /* ASoC SOF DAPM widget */
 struct snd_sof_widget {
 	struct snd_sof_dev *sdev;
@@ -592,15 +568,6 @@ void snd_sof_pcm_period_elapsed(struct snd_pcm_substream *substream);
 int snd_sof_ipc_stream_posn(struct snd_soc_component *scomp,
 			    struct snd_sof_pcm *spcm, int direction,
 			    struct sof_ipc_stream_posn *posn);
-
-/*
- * Mixer IPC
- */
-int snd_sof_ipc_set_get_comp_data(struct snd_sof_ipc *ipc,
-				  struct snd_sof_control *scontrol, u32 ipc_cmd,
-				  enum sof_ipc_ctrl_type ctrl_type,
-				  enum sof_ipc_ctrl_cmd ctrl_cmd,
-				  bool send);
 
 /*
  * Topology.

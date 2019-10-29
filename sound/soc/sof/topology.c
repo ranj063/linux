@@ -1117,7 +1117,7 @@ static int sof_control_load(struct snd_soc_component *scomp, int index,
 	if (!scontrol)
 		return -ENOMEM;
 
-	scontrol->sdev = sdev;
+	scontrol->scomp = scomp;
 
 	switch (le32_to_cpu(hdr->ops.info)) {
 	case SND_SOC_TPLG_CTL_VOLSW:
@@ -1993,7 +1993,7 @@ static int sof_process_load(struct snd_soc_component *scomp, int index,
 	/* send control data with large message supported method */
 	for (i = 0; i < widget->num_kcontrols; i++) {
 		wdata[i].control->readback_offset = 0;
-		ret = snd_sof_ipc_set_get_comp_data(sdev->ipc, wdata[i].control,
+		ret = snd_sof_ipc_set_get_comp_data(wdata[i].control,
 						    wdata[i].ipc_cmd,
 						    wdata[i].ctrl_type,
 						    wdata[i].control->cmd,
@@ -3254,7 +3254,6 @@ err:
 static int snd_sof_cache_kcontrol_val(struct snd_soc_component *scomp)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_control *scontrol = NULL;
 	int ipc_cmd, ctrl_type;
 	int ret = 0;
@@ -3279,7 +3278,7 @@ static int snd_sof_cache_kcontrol_val(struct snd_soc_component *scomp)
 				scontrol->cmd);
 			return -EINVAL;
 		}
-		ret = snd_sof_ipc_set_get_comp_data(sdev->ipc, scontrol,
+		ret = snd_sof_ipc_set_get_comp_data(scontrol,
 						    ipc_cmd, ctrl_type,
 						    scontrol->cmd,
 						    false);

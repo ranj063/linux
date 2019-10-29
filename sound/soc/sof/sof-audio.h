@@ -11,6 +11,30 @@
 #ifndef __SOUND_SOC_SOF_AUDIO_H
 #define __SOUND_SOC_SOF_AUDIO_H
 
+struct snd_sof_led_control {
+	unsigned int use_led;
+	unsigned int direction;
+	unsigned int led_value;
+};
+
+/* ALSA SOF Kcontrol device */
+struct snd_sof_control {
+	struct snd_soc_component *scomp;
+	int comp_id;
+	int min_volume_step; /* min volume step for volume_table */
+	int max_volume_step; /* max volume step for volume_table */
+	int num_channels;
+	u32 readback_offset; /* offset to mmaped data if used */
+	struct sof_ipc_ctrl_data *control_data;
+	u32 size;	/* cdata size */
+	enum sof_ipc_ctrl_cmd cmd;
+	u32 *volume_table; /* volume table computed from tlv data*/
+
+	struct list_head list;	/* list in sof_audio_dev control list */
+
+	struct snd_sof_led_control led_ctl;
+};
+
 /* SOF audio device */
 struct sof_audio_dev {
 	/*
@@ -29,5 +53,14 @@ struct sof_audio_dev {
 
 	void *private;
 };
+
+/*
+ * Mixer IPC
+ */
+int snd_sof_ipc_set_get_comp_data(struct snd_sof_control *scontrol,
+				  u32 ipc_cmd,
+				  enum sof_ipc_ctrl_type ctrl_type,
+				  enum sof_ipc_ctrl_cmd ctrl_cmd,
+				  bool send);
 
 #endif
