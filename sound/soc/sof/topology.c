@@ -55,7 +55,8 @@ struct sof_widget_data {
 static int ipc_pcm_params(struct snd_sof_widget *swidget, int dir)
 {
 	struct sof_ipc_pcm_params_reply ipc_params_reply;
-	struct snd_sof_dev *sdev = swidget->sdev;
+	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_pcm_params pcm;
 	struct snd_pcm_hw_params *params;
 	struct snd_sof_pcm *spcm;
@@ -113,7 +114,8 @@ static int ipc_pcm_params(struct snd_sof_widget *swidget, int dir)
  /* send stream trigger ipc */
 static int ipc_trigger(struct snd_sof_widget *swidget, int cmd)
 {
-	struct snd_sof_dev *sdev = swidget->sdev;
+	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct sof_ipc_stream stream;
 	struct sof_ipc_reply reply;
 	int ret = 0;
@@ -137,17 +139,16 @@ static int sof_keyword_dapm_event(struct snd_soc_dapm_widget *w,
 				  struct snd_kcontrol *k, int event)
 {
 	struct snd_sof_widget *swidget = w->dobj.private;
+	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	int stream = SNDRV_PCM_STREAM_CAPTURE;
-	struct snd_sof_dev *sdev;
 	struct snd_sof_pcm *spcm;
 	int ret = 0;
 
 	if (!swidget)
 		return 0;
 
-	sdev = swidget->sdev;
-
-	dev_dbg(sdev->dev, "received event %d for widget %s\n",
+	dev_dbg(scomp->dev, "received event %d for widget %s\n",
 		event, w->name);
 
 	/* get runtime PCM params using widget's stream name */
@@ -2105,7 +2106,7 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 	if (!swidget)
 		return -ENOMEM;
 
-	swidget->sdev = sdev;
+	swidget->scomp = scomp;
 	swidget->widget = w;
 	swidget->comp_id = sdev->next_comp_id++;
 	swidget->complete = 0;

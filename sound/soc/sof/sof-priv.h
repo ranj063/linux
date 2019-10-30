@@ -38,6 +38,8 @@
 #define SOF_DBG_PCI		BIT(4)
 #define SOF_DBG_RETAIN_CTX	BIT(5)	/* prevent DSP D3 on FW exception */
 
+struct snd_sof_widget;
+
 /* global debug state set by SOF_DBG_ flags */
 extern int sof_core_debug;
 
@@ -328,20 +330,6 @@ struct snd_sof_pcm {
 	struct list_head list;	/* list in sdev pcm list */
 	struct snd_pcm_hw_params params[2];
 	bool prepared[2]; /* PCM_PARAMS set successfully */
-};
-
-/* ASoC SOF DAPM widget */
-struct snd_sof_widget {
-	struct snd_sof_dev *sdev;
-	int comp_id;
-	int pipeline_id;
-	int complete;
-	int id;
-
-	struct snd_soc_dapm_widget *widget;
-	struct list_head list;	/* list in sdev widget list */
-
-	void *private;		/* core does not touch this */
 };
 
 /* ASoC SOF DAPM route */
