@@ -487,10 +487,10 @@ static int sof_audio_probe(struct platform_device *pdev)
 	plat_data->platform = dev_name(&pdev->dev);
 
 	/* set up platform component driver */
-	snd_sof_new_platform_drv(sdev);
+	snd_sof_new_platform_drv(sof_audio, plat_data);
 
 	/* now register audio DSP platform driver and dai */
-	ret = devm_snd_soc_register_component(&pdev->dev, &sdev->plat_drv,
+	ret = devm_snd_soc_register_component(&pdev->dev, &sof_audio->plat_drv,
 					      sof_ops(sdev)->drv,
 					      sof_ops(sdev)->num_drv);
 	if (ret < 0) {

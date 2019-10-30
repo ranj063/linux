@@ -754,22 +754,22 @@ static int sof_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 
 static int sof_pcm_probe(struct snd_soc_component *component)
 {
+	struct sof_audio_dev *sof_audio = sof_get_client_data(component->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(component->dev->parent);
 	struct snd_sof_pdata *plat_data = sdev->pdata;
 	const char *tplg_filename;
 	int ret;
 
 	/* load the default topology */
-	sdev->component = component;
+	sof_audio->component = component;
 
-	tplg_filename = devm_kasprintf(sdev->dev, GFP_KERNEL,
-				       "%s/%s",
+	tplg_filename = devm_kasprintf(sdev->dev, GFP_KERNEL, "%s/%s",
 				       plat_data->tplg_filename_prefix,
 				       plat_data->tplg_filename);
 	if (!tplg_filename)
 		return -ENOMEM;
 
-	ret = snd_sof_load_topology(sdev, tplg_filename);
+	ret = snd_sof_load_topology(component, tplg_filename);
 	if (ret < 0) {
 		dev_err(component->dev, "error: failed to load DSP topology %d\n",
 			ret);
@@ -793,10 +793,10 @@ static void sof_pcm_remove(struct snd_soc_component *component)
 	snd_soc_tplg_component_remove(component, SND_SOC_TPLG_INDEX_ALL);
 }
 
-void snd_sof_new_platform_drv(struct snd_sof_dev *sdev)
+void snd_sof_new_platform_drv(struct sof_audio_dev *sof_audio,
+			      struct snd_sof_pdata *plat_data)
 {
-	struct snd_soc_component_driver *pd = &sdev->plat_drv;
-	struct snd_sof_pdata *plat_data = sdev->pdata;
+	struct snd_soc_component_driver *pd = &sof_audio->plat_drv;
 	const char *drv_name;
 
 	drv_name = plat_data->machine->drv_name;

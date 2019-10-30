@@ -114,4 +114,14 @@ struct snd_sof_pcm *snd_sof_find_spcm_comp(struct snd_soc_component *scomp,
 struct snd_sof_pcm *snd_sof_find_spcm_pcm_id(struct snd_soc_component *scomp,
 					     unsigned int pcm_id);
 
+void snd_sof_new_platform_drv(struct sof_audio_dev *sof_audio,
+			      struct snd_sof_pdata *plat_data);
+
+/*
+ * Topology.
+ * There is no snd_sof_free_topology since topology components will
+ * be freed by snd_soc_unregister_component,
+ */
+int snd_sof_load_topology(struct snd_soc_component *scomp, const char *file);
+
 #endif

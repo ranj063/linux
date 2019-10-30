@@ -372,12 +372,6 @@ struct snd_sof_dev {
 	spinlock_t ipc_lock;	/* lock for IPC users */
 	spinlock_t hw_lock;	/* lock for HW IO access */
 
-	/*
-	 * ASoC components. plat_drv fields are set dynamically so
-	 * can't use const
-	 */
-	struct snd_soc_component_driver plat_drv;
-
 	/* power states related */
 	enum sof_d0_substate d0_substate;
 	/* flag to track if the intended power target of suspend is S0ix */
@@ -419,8 +413,6 @@ struct snd_sof_dev {
 	struct sof_ipc_fw_ready fw_ready;
 	struct sof_ipc_fw_version fw_version;
 
-	/* topology */
-	struct snd_soc_component *component;
 	u32 enabled_cores_mask; /* keep track of enabled cores */
 
 	/* FW configuration */
@@ -480,8 +472,6 @@ void snd_sof_complete(struct device *dev);
 int snd_sof_set_d0_substate(struct snd_sof_dev *sdev,
 			    enum sof_d0_substate d0_substate);
 
-void snd_sof_new_platform_drv(struct snd_sof_dev *sdev);
-
 int snd_sof_create_page_table(struct device *dev,
 			      struct snd_dma_buffer *dmab,
 			      unsigned char *page_table, size_t size);
@@ -524,12 +514,6 @@ int snd_sof_ipc_stream_posn(struct snd_soc_component *scomp,
 			    struct snd_sof_pcm *spcm, int direction,
 			    struct sof_ipc_stream_posn *posn);
 
-/*
- * Topology.
- * There is no snd_sof_free_topology since topology components will
- * be freed by snd_soc_unregister_component,
- */
-int snd_sof_load_topology(struct snd_sof_dev *sdev, const char *file);
 int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
 			      struct snd_sof_widget *swidget);
 

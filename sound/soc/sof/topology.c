@@ -3446,22 +3446,21 @@ static struct snd_soc_tplg_ops sof_tplg_ops = {
 	.bytes_ext_ops_count	= ARRAY_SIZE(sof_bytes_ext_ops),
 };
 
-int snd_sof_load_topology(struct snd_sof_dev *sdev, const char *file)
+int snd_sof_load_topology(struct snd_soc_component *scomp, const char *file)
 {
 	const struct firmware *fw;
 	int ret;
 
-	dev_dbg(sdev->dev, "loading topology:%s\n", file);
+	dev_dbg(scomp->dev, "loading topology:%s\n", file);
 
-	ret = request_firmware(&fw, file, sdev->dev);
+	ret = request_firmware(&fw, file, scomp->dev);
 	if (ret < 0) {
 		dev_err(sdev->dev, "error: tplg request firmware %s failed err: %d\n",
 			file, ret);
 		return ret;
 	}
 
-	ret = snd_soc_tplg_component_load(sdev->component,
-					  &sof_tplg_ops, fw,
+	ret = snd_soc_tplg_component_load(scomp, &sof_tplg_ops, fw,
 					  SND_SOC_TPLG_INDEX_ALL);
 	if (ret < 0) {
 		dev_err(sdev->dev, "error: tplg component load failed %d\n",
