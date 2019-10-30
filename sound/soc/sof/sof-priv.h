@@ -420,7 +420,6 @@ struct snd_sof_dev {
 	struct sof_ipc_fw_version fw_version;
 
 	/* topology */
-	struct snd_soc_tplg_ops *tplg_ops;
 	struct snd_soc_component *component;
 	u32 enabled_cores_mask; /* keep track of enabled cores */
 
@@ -530,8 +529,6 @@ int snd_sof_ipc_stream_posn(struct snd_soc_component *scomp,
  * There is no snd_sof_free_topology since topology components will
  * be freed by snd_soc_unregister_component,
  */
-int snd_sof_init_topology(struct snd_sof_dev *sdev,
-			  struct snd_soc_tplg_ops *ops);
 int snd_sof_load_topology(struct snd_sof_dev *sdev, const char *file);
 int snd_sof_complete_pipeline(struct snd_sof_dev *sdev,
 			      struct snd_sof_widget *swidget);
