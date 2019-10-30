@@ -69,10 +69,25 @@ int sof_nocodec_setup(struct device *dev,
 {
 	const struct snd_sof_audio_ops *audio_ops = sof_audio->audio_ops;
 	struct snd_soc_dai_link *links;
+	struct snd_soc_acpi_mach *mach;
 	int ret;
 
-	if (!sof_audio->machine)
+	switch (sof_audio->machine->type) {
+	case SND_SOC_SOF_MACH_TYPE_ACPI:
+		mach = devm_kzalloc(dev, sizeof(*mach), GFP_KERNEL);
+		if (!mach)
+			return -ENOMEM;
+
+		mach->drv_name = "sof-nocodec";
+		mach->mach_params.platform = dev_name(dev);
+		sof_mach_set_machine(sof_audio->machine, mach);
+		break;
+	case SND_SOC_SOF_MACH_TYPE_OF:
+		/* TODO */
+		break;
+	default:
 		return -EINVAL;
+	}
 
 	sof_audio->drv_name = "sof-nocodec";
 	sof_audio->tplg_filename = desc->nocodec_tplg_filename;

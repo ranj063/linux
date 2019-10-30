@@ -365,10 +365,11 @@ int hda_machine_driver_select(struct snd_sof_dev *sdev,
 		 * 1. there is one HDMI codec and one external HDAudio codec
 		 * 2. only HDMI codec
 		 */
-		if (!sof_audio->machine && codec_num <= 2 &&
+		if (!sof_mach_get_machine(sof_audio->machine) &&
+		    codec_num <= 2 &&
 		    HDA_IDISP_CODEC(bus->codec_mask)) {
 			hda_mach = snd_soc_acpi_intel_hda_machines;
-			sof_audio->machine = hda_mach;
+			sof_mach_set_machine(sof_audio->machine, hda_mach);
 
 			/* topology: use the info from hda_machines */
 			sof_audio->tplg_filename = hda_mach->sof_tplg_filename;
@@ -413,9 +414,9 @@ int hda_machine_driver_select(struct snd_sof_dev *sdev,
 	}
 
 	/* used by hda machine driver to create dai links */
-	if (sof_audio->machine) {
+	if (sof_mach_get_machine(sof_audio->machine)) {
 		mach_params = (struct snd_soc_acpi_mach_params *)
-			&sof_audio->machine->mach_params;
+			&sof_audio->machine->acpi->mach_params;
 		mach_params->codec_mask = bus->codec_mask;
 		mach_params->platform = sof_audio->platform;
 	}

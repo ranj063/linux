@@ -783,7 +783,7 @@ void snd_sof_new_platform_drv(struct sof_audio_dev *sof_audio)
 	struct snd_soc_component_driver *pd = &sof_audio->plat_drv;
 	const char *drv_name;
 
-	drv_name = sof_audio->machine->drv_name;
+	drv_name = sof_mach_get_drv_name(sof_audio->machine);
 
 	pd->name = "sof-audio-component";
 	pd->probe = sof_pcm_probe;

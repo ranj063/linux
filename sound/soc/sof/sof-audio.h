@@ -160,7 +160,7 @@ struct sof_audio_dev {
 
 	/* machine */
 	struct platform_device *pdev_mach;
-	const struct snd_soc_acpi_mach *machine;
+	struct snd_soc_sof_mach *machine;
 
 	const char *tplg_filename_prefix;
 	const char *tplg_filename;

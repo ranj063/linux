@@ -222,12 +222,8 @@ static int sof_machine_check(struct platform_device *pdev,
 			     const struct sof_dev_desc *desc)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(&pdev->dev);
-#if IS_ENABLED(CONFIG_SND_SOC_SOF_NOCODEC)
-	struct snd_soc_acpi_mach *machine;
-	int ret;
-#endif
 
-	if (sof_audio->machine)
+	if (sof_mach_get_machine(sof_audio->machine))
 		return 0;
 
 #if !IS_ENABLED(CONFIG_SND_SOC_SOF_NOCODEC)
@@ -236,20 +232,8 @@ static int sof_machine_check(struct platform_device *pdev,
 #else
 	/* fallback to nocodec mode */
 	dev_warn(&pdev->dev, "No ASoC machine driver found - using nocodec\n");
-	machine = devm_kzalloc(&pdev->dev, sizeof(*machine), GFP_KERNEL);
-	if (!machine)
-		return -ENOMEM;
 
-	machine->drv_name = "sof-nocodec";
-	sof_audio->machine = machine;
-
-	ret = sof_nocodec_setup(&pdev->dev, sof_audio, desc);
-	if (ret < 0)
-		return ret;
-
-	machine->mach_params.platform = dev_name(&pdev->dev);
-
-	return 0;
+	return sof_nocodec_setup(&pdev->dev, sof_audio, desc);
 #endif
 }
 
@@ -477,32 +461,45 @@ static int sof_audio_select_machine(struct platform_device *pdev,
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(&pdev->dev);
 	struct snd_sof_dev *sdev = dev_get_drvdata(pdev->dev.parent);
+#if !IS_ENABLED(CONFIG_SND_SOC_SOF_FORCE_NOCODEC_MODE)
 	struct snd_soc_acpi_mach *mach;
+#endif
 	int ret;
+
+	sof_audio->machine = devm_kzalloc(&pdev->dev,
+					  sizeof(*sof_audio->machine),
+					  GFP_KERNEL);
+	if (!sof_audio->machine)
+		return -ENOMEM;
+
+	/* set mach type */
+	sof_set_mach_type(sof_audio->machine, desc);
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_FORCE_NOCODEC_MODE)
 	/* force nocodec mode */
 	dev_warn(&pdev->dev, "Force to use nocodec mode\n");
-	mach = devm_kzalloc(&pdev->dev, sizeof(*mach), GFP_KERNEL);
-	if (!mach)
-		return -ENOMEM;
-
-	mach->drv_name = "sof-nocodec";
-	sof_audio->machine = mach;
 
 	ret = sof_nocodec_setup(&pdev->dev, sof_audio, desc);
 	if (ret < 0)
 		return ret;
-	mach->mach_params.platform = dev_name(&pdev->dev);
 #else
-	/* find machine */
-	mach = snd_soc_acpi_find_machine(desc->machines);
-	if (!mach) {
-		dev_warn(&pdev->dev, "warning: No matching ASoC machine driver found\n");
-	} else {
-		mach->mach_params.platform = dev_name(&pdev->dev);
-		sof_audio->tplg_filename = mach->sof_tplg_filename;
-		sof_audio->machine = mach;
+	switch (sof_audio->machine->type) {
+	case SND_SOC_SOF_MACH_TYPE_ACPI:
+		/* find machine */
+		mach = snd_soc_acpi_find_machine(desc->machines);
+		if (!mach) {
+			dev_warn(&pdev->dev, "warning: No matching ASoC machine driver found\n");
+		} else {
+			mach->mach_params.platform = dev_name(&pdev->dev);
+			sof_audio->tplg_filename = mach->sof_tplg_filename;
+			sof_mach_set_machine(sof_audio->machine, mach);
+		}
+		break;
+	case SND_SOC_SOF_MACH_TYPE_OF:
+		/* TODO */
+		break;
+	default:
+		return -EINVAL;
 	}
 #endif /* CONFIG_SND_SOC_SOF_FORCE_NOCODEC_MODE */
 
@@ -653,9 +650,9 @@ static int sof_audio_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	machine = (const void *)sof_audio->machine;
-	drv_name = sof_audio->machine->drv_name;
-	size = sizeof(*sof_audio->machine);
+	machine = sof_mach_get_machine(sof_audio->machine);
+	drv_name = sof_mach_get_drv_name(sof_audio->machine);
+	size = sof_mach_get_mach_size(sof_audio->machine);
 
 	/* register machine driver, pass machine info as pdata */
 	sof_audio->pdev_mach =
