@@ -313,7 +313,7 @@ int sof_client_tx_message(struct device *dev, u32 header,
 			  void *msg_data, size_t msg_bytes, void *reply_data,
 			  size_t reply_bytes)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
 
 	return sof_ipc_tx_message(sdev->ipc, header, msg_data, msg_bytes,
 				 reply_data, reply_bytes);
@@ -573,7 +573,7 @@ int snd_sof_ipc_set_get_comp_data(struct snd_sof_control *scontrol,
 {
 	struct sof_ipc_ctrl_data *cdata = scontrol->control_data;
 	struct snd_soc_component *scomp = scontrol->scomp;
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct sof_ipc_fw_ready *ready = &sdev->fw_ready;
 	struct sof_ipc_fw_version *v = &ready->version;
 	struct sof_ipc_ctrl_data_params sparams;

@@ -20,7 +20,6 @@ static void ipc_period_elapsed(struct snd_sof_client *client, u32 msg_id)
 {
 	struct sof_audio_dev *sof_audio = client->client_data;
 	struct snd_soc_component *scomp = sof_audio->component;
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_pcm_stream *stream;
 	struct sof_ipc_stream_posn posn;
 	struct snd_sof_pcm *spcm;
@@ -35,7 +34,7 @@ static void ipc_period_elapsed(struct snd_sof_client *client, u32 msg_id)
 	}
 
 	stream = &spcm->stream[direction];
-	snd_sof_ipc_msg_data(sdev, stream->substream, &posn, sizeof(posn));
+	snd_sof_ipc_msg_data(scomp->dev, stream->substream, &posn, sizeof(posn));
 
 	dev_dbg(scomp->dev, "posn : host 0x%llx dai 0x%llx wall 0x%llx\n",
 		posn.host_posn, posn.dai_posn, posn.wallclock);
@@ -52,7 +51,6 @@ static void ipc_xrun(struct snd_sof_client *client, u32 msg_id)
 {
 	struct sof_audio_dev *sof_audio = client->client_data;
 	struct snd_soc_component *scomp = sof_audio->component;
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_sof_pcm_stream *stream;
 	struct sof_ipc_stream_posn posn;
 	struct snd_sof_pcm *spcm;
@@ -67,9 +65,9 @@ static void ipc_xrun(struct snd_sof_client *client, u32 msg_id)
 
 	stream = &spcm->stream[direction];
 	/* TODO: figure out how to do this from core */
-	snd_sof_ipc_msg_data(sdev, stream->substream, &posn, sizeof(posn));
+	snd_sof_ipc_msg_data(scomp->dev, stream->substream, &posn, sizeof(posn));
 
-	dev_dbg(sdev->dev,  "posn XRUN: host %llx comp %d size %d\n",
+	dev_dbg(scomp->dev,  "posn XRUN: host %llx comp %d size %d\n",
 		posn.host_posn, posn.xrun_comp_id, posn.xrun_size);
 
 #if defined(CONFIG_SND_SOC_SOF_DEBUG_XRUN_STOP)
@@ -240,7 +238,6 @@ static int sof_machine_check(struct platform_device *pdev,
 static int sof_set_hw_params_upon_resume(struct device *dev)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(dev->parent);
 	struct snd_pcm_substream *substream;
 	struct snd_sof_pcm *spcm;
 	snd_pcm_state_t state;
@@ -264,7 +261,7 @@ static int sof_set_hw_params_upon_resume(struct device *dev)
 	}
 
 	/* set internal flag for BE */
-	return snd_sof_dsp_hw_params_upon_resume(sdev);
+	return snd_sof_dsp_hw_params_upon_resume(scomp->dev);
 }
 
 static int sof_restore_kcontrols(struct device *dev)

@@ -34,6 +34,15 @@ void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
 EXPORT_SYMBOL(snd_sof_ipc_rx_register);
 
 /*
+ * This method can only be called by the core and platform-specific code.
+ */
+struct snd_sof_dev *snd_sof_get_sof_dev(struct device *dev)
+{
+	return dev_get_drvdata(dev->parent);
+}
+EXPORT_SYMBOL(snd_sof_get_sof_dev);
+
+/*
  * FW Panic/fault handling.
  */
 

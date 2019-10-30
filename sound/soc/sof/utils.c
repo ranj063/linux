@@ -110,3 +110,56 @@ void sof_block_read(struct snd_sof_dev *sdev, u32 bar, u32 offset, void *dest,
 	memcpy_fromio(dest, src, size);
 }
 EXPORT_SYMBOL(sof_block_read);
+
+/* accessor methods for snd_sof_dev members */
+
+/* get/set cores mask */
+u32 snd_sof_dsp_get_enabled_cores_mask(struct device *dev)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	return sdev->enabled_cores_mask;
+}
+EXPORT_SYMBOL(snd_sof_dsp_get_enabled_cores_mask);
+
+void snd_sof_dsp_set_enabled_cores_mask(struct device *dev, u32 core_mask)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	sdev->enabled_cores_mask = core_mask;
+}
+EXPORT_SYMBOL(snd_sof_dsp_set_enabled_cores_mask);
+
+bool snd_sof_is_s0_suspend(struct device *dev)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	return sdev->s0_suspend;
+}
+EXPORT_SYMBOL(snd_sof_is_s0_suspend);
+
+/* get next comp id */
+int snd_sof_get_next_comp_id(struct device *dev)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	return sdev->next_comp_id;
+}
+EXPORT_SYMBOL(snd_sof_get_next_comp_id);
+
+/* increment next comp id */
+void snd_sof_inc_next_comp_id(struct device *dev)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	sdev->next_comp_id++;
+}
+EXPORT_SYMBOL(snd_sof_inc_next_comp_id);
+
+struct sof_ipc_fw_ready *snd_sof_get_fw_ready(struct device *dev)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	return &sdev->fw_ready;
+}
+EXPORT_SYMBOL(snd_sof_get_fw_ready);

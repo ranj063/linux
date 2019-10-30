@@ -321,7 +321,6 @@ static int sof_pcm_prepare(struct snd_soc_component *component,
 static int sof_pcm_trigger(struct snd_soc_component *component,
 			   struct snd_pcm_substream *substream, int cmd)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(component->dev->parent);
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct sof_audio_dev *sof_audio =
 		sof_get_client_data(component->dev);
@@ -388,7 +387,7 @@ static int sof_pcm_trigger(struct snd_soc_component *component,
 		stream.hdr.cmd |= SOF_IPC_STREAM_TRIG_START;
 		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
-		if (sdev->s0_suspend &&
+		if (snd_sof_is_s0_suspend(component->dev) &&
 		    spcm->stream[substream->stream].d0i3_compatible) {
 			/*
 			 * trap the event, not sending trigger stop to

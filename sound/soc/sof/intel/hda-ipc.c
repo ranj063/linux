@@ -303,7 +303,7 @@ int hda_ipc_pcm_params(struct snd_soc_component *scomp,
 		       struct snd_pcm_substream *substream,
 		       const struct sof_ipc_pcm_params_reply *reply)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct hdac_stream *hstream = substream->runtime->private_data;
 	struct sof_intel_hda_stream *hda_stream;
 	/* validate offset */

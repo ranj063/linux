@@ -483,4 +483,13 @@ void intel_ipc_msg_data(struct snd_sof_dev *sdev,
 			struct snd_pcm_substream *substream,
 			void *p, size_t sz);
 
+/* accessor functions for some snd_sof_dev members */
+u32 snd_sof_dsp_get_enabled_cores_mask(struct device *dev);
+void snd_sof_dsp_set_enabled_cores_mask(struct device *dev, u32 core_mask);
+bool snd_sof_is_s0_suspend(struct device *dev);
+int snd_sof_get_next_comp_id(struct device *dev);
+void snd_sof_inc_next_comp_id(struct device *dev);
+struct sof_ipc_fw_ready *snd_sof_get_fw_ready(struct device *dev);
+struct snd_sof_dev *snd_sof_get_sof_dev(struct device *dev);
+
 #endif

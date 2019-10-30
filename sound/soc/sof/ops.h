@@ -65,18 +65,22 @@ static inline int snd_sof_dsp_reset(struct snd_sof_dev *sdev)
 }
 
 /* dsp core power up/power down */
-static inline int snd_sof_dsp_core_power_up(struct snd_sof_dev *sdev,
+static inline int snd_sof_dsp_core_power_up(struct device *dev,
 					    unsigned int core_mask)
 {
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
 	if (sof_ops(sdev)->core_power_up)
 		return sof_ops(sdev)->core_power_up(sdev, core_mask);
 
 	return 0;
 }
 
-static inline int snd_sof_dsp_core_power_down(struct snd_sof_dev *sdev,
+static inline int snd_sof_dsp_core_power_down(struct device *dev,
 					      unsigned int core_mask)
 {
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
 	if (sof_ops(sdev)->core_power_down)
 		return sof_ops(sdev)->core_power_down(sdev, core_mask);
 
@@ -306,10 +310,12 @@ static inline int snd_sof_dma_trace_trigger(struct snd_sof_dev *sdev, int cmd)
 }
 
 /* host DSP message data */
-static inline void snd_sof_ipc_msg_data(struct snd_sof_dev *sdev,
+static inline void snd_sof_ipc_msg_data(struct device *dev,
 					struct snd_pcm_substream *substream,
 					void *p, size_t sz)
 {
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
 	sof_ops(sdev)->ipc_msg_data(sdev, substream, p, sz);
 }
 

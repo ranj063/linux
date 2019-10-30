@@ -88,7 +88,7 @@ int hda_dsp_pcm_hw_params(struct snd_soc_component *scomp,
 			  struct snd_pcm_hw_params *params,
 			  struct sof_ipc_stream_params *ipc_params)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct hdac_stream *hstream = substream->runtime->private_data;
 	struct hdac_ext_stream *stream = stream_to_hdac_ext_stream(hstream);
 	struct sof_intel_hda_dev *hda = sdev->pdata->hw_pdata;
@@ -141,7 +141,7 @@ int hda_dsp_pcm_hw_params(struct snd_soc_component *scomp,
 int hda_dsp_pcm_trigger(struct snd_soc_component *scomp,
 			struct snd_pcm_substream *substream, int cmd)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct hdac_stream *hstream = substream->runtime->private_data;
 	struct hdac_ext_stream *stream = stream_to_hdac_ext_stream(hstream);
 
@@ -152,7 +152,7 @@ snd_pcm_uframes_t hda_dsp_pcm_pointer(struct snd_soc_component *scomp,
 				      struct snd_pcm_substream *substream)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(scomp->dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct hdac_stream *hstream = substream->runtime->private_data;
 	struct sof_intel_hda_dev *hda = sdev->pdata->hw_pdata;
@@ -221,7 +221,7 @@ found:
 int hda_dsp_pcm_open(struct snd_soc_component *scomp,
 		     struct snd_pcm_substream *substream)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct hdac_ext_stream *dsp_stream;
 	int direction = substream->stream;
 
@@ -240,7 +240,7 @@ int hda_dsp_pcm_open(struct snd_soc_component *scomp,
 int hda_dsp_pcm_close(struct snd_soc_component *scomp,
 		      struct snd_pcm_substream *substream)
 {
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(scomp->dev);
 	struct hdac_stream *hstream = substream->runtime->private_data;
 	int direction = substream->stream;
 	int ret;

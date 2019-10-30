@@ -269,7 +269,6 @@ static int hda_link_pcm_prepare(struct snd_pcm_substream *substream,
 				snd_soc_dai_get_dma_data(dai, substream);
 	struct sof_intel_hda_stream *hda_stream;
 	struct snd_soc_component *scomp = dai->component;
-	struct snd_sof_dev *sdev = dev_get_drvdata(scomp->dev->parent);
 	struct snd_soc_pcm_runtime *rtd = snd_pcm_substream_chip(substream);
 	int stream = substream->stream;
 
@@ -278,7 +277,7 @@ static int hda_link_pcm_prepare(struct snd_pcm_substream *substream,
 	if (link_dev->link_prepared)
 		return 0;
 
-	dev_dbg(sdev->dev, "hda: prepare stream dir %d\n", substream->stream);
+	dev_dbg(scomp->dev, "hda: prepare stream dir %d\n", substream->stream);
 
 	return hda_link_hw_params(substream, &rtd->dpcm[stream].hw_params,
 				  dai);
