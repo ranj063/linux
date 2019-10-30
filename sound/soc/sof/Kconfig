@@ -16,6 +16,7 @@ config SND_SOC_SOF_PCI
 	select SND_SOC_ACPI if ACPI
 	select SND_SOC_SOF_OPTIONS
 	select SND_SOC_SOF_INTEL_PCI if SND_SOC_SOF_INTEL_TOPLEVEL
+	select SND_SOC_SOF_AUDIO
 	help
 	  This adds support for PCI enumeration. This option is
 	  required to enable Intel Skylake+ devices
@@ -30,6 +31,7 @@ config SND_SOC_SOF_ACPI
 	select SND_SOC_SOF_OPTIONS
 	select SND_SOC_SOF_INTEL_ACPI if SND_SOC_SOF_INTEL_TOPLEVEL
 	select IOSF_MBI if X86 && PCI
+	select SND_SOC_SOF_AUDIO
 	help
 	  This adds support for ACPI enumeration. This option is required
 	  to enable Intel Haswell/Broadwell/Baytrail/Cherrytrail devices
@@ -41,6 +43,7 @@ config SND_SOC_SOF_OF
 	depends on OF || COMPILE_TEST
 	select SND_SOC_SOF
 	select SND_SOC_SOF_OPTIONS
+	select SND_SOC_SOF_AUDIO
 	help
 	  This adds support for Device Tree enumeration. This option is
 	  required to enable i.MX8 devices.
@@ -55,6 +58,9 @@ config SND_SOC_SOF_OPTIONS
 if SND_SOC_SOF_OPTIONS
 
 config SND_SOC_SOF_NOCODEC
+	tristate
+
+config SND_SOC_SOF_AUDIO
 	tristate
 
 config SND_SOC_SOF_NOCODEC_SUPPORT
