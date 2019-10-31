@@ -457,7 +457,6 @@ static int sof_audio_select_machine(struct platform_device *pdev,
 				    const struct sof_dev_desc *desc)
 {
 	struct sof_audio_dev *sof_audio = sof_get_client_data(&pdev->dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(pdev->dev.parent);
 #if !IS_ENABLED(CONFIG_SND_SOC_SOF_FORCE_NOCODEC_MODE)
 	struct snd_soc_acpi_mach *mach;
 #endif
@@ -503,7 +502,7 @@ static int sof_audio_select_machine(struct platform_device *pdev,
 	sof_audio->tplg_filename_prefix = desc->default_tplg_path;
 
 	/* use platform-specific machine driver if mach is null */
-	ret = snd_sof_machine_driver_select(sdev, sof_audio);
+	ret = snd_sof_machine_driver_select(&pdev->dev, sof_audio);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"error: invalid tplg filename for platform-specific machine\n");
@@ -588,8 +587,7 @@ static const struct dev_pm_ops sof_audio_pm = {
 static int sof_audio_probe(struct platform_device *pdev)
 {
 	struct snd_sof_client *audio_client = dev_get_platdata(&pdev->dev);
-	struct snd_sof_dev *sdev = dev_get_drvdata(pdev->dev.parent);
-	struct snd_sof_pdata *plat_data = sdev->pdata;
+	struct snd_sof_pdata *plat_data = snd_sof_get_pdata(&pdev->dev);
 	const struct sof_dev_desc *desc = plat_data->desc;
 	struct sof_audio_dev *sof_audio;
 	struct ipc_rx_client *audio_rx;
@@ -627,7 +625,7 @@ static int sof_audio_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	audio_rx->ipc_cmd = SOF_IPC_GLB_STREAM_MSG;
 	audio_rx->dev = &pdev->dev;
-	snd_sof_ipc_rx_register(sdev, audio_rx);
+	snd_sof_ipc_rx_register(audio_rx);
 
 	/* select machine driver */
 	ret = sof_audio_select_machine(pdev, desc);

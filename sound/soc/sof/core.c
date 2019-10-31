@@ -26,13 +26,6 @@ MODULE_PARM_DESC(sof_debug, "SOF core debug options (0x0 all off)");
 #define TIMEOUT_DEFAULT_IPC_MS  500
 #define TIMEOUT_DEFAULT_BOOT_MS 2000
 
-void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
-			     struct ipc_rx_client *rx_client)
-{
-	list_add(&rx_client->list, &sdev->ipc_rx_list);
-}
-EXPORT_SYMBOL(snd_sof_ipc_rx_register);
-
 /*
  * This method can only be called by the core and platform-specific code.
  */
@@ -41,6 +34,14 @@ struct snd_sof_dev *snd_sof_get_sof_dev(struct device *dev)
 	return dev_get_drvdata(dev->parent);
 }
 EXPORT_SYMBOL(snd_sof_get_sof_dev);
+
+void snd_sof_ipc_rx_register(struct ipc_rx_client *rx_client)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(rx_client->dev);
+
+	list_add(&rx_client->list, &sdev->ipc_rx_list);
+}
+EXPORT_SYMBOL(snd_sof_ipc_rx_register);
 
 /*
  * FW Panic/fault handling.

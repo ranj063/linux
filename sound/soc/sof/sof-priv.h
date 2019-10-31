@@ -410,8 +410,7 @@ int snd_sof_ipc_valid(struct snd_sof_dev *sdev);
 int sof_ipc_tx_message(struct snd_sof_ipc *ipc, u32 header,
 		       void *msg_data, size_t msg_bytes, void *reply_data,
 		       size_t reply_bytes);
-void snd_sof_ipc_rx_register(struct snd_sof_dev *sdev,
-			     struct ipc_rx_client *rx_client);
+void snd_sof_ipc_rx_register(struct ipc_rx_client *rx_client);
 
 /*
  * Trace/debug
@@ -491,5 +490,6 @@ int snd_sof_get_next_comp_id(struct device *dev);
 void snd_sof_inc_next_comp_id(struct device *dev);
 struct sof_ipc_fw_ready *snd_sof_get_fw_ready(struct device *dev);
 struct snd_sof_dev *snd_sof_get_sof_dev(struct device *dev);
+struct snd_sof_pdata *snd_sof_get_pdata(struct device *dev);
 
 #endif

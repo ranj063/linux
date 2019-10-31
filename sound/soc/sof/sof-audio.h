@@ -58,7 +58,7 @@ struct snd_sof_audio_ops {
 					 struct snd_pcm_substream *substream); /* optional */
 
 	/* platform-specific machine driver check */
-	int (*machine_driver_select)(struct snd_sof_dev *sdev,
+	int (*machine_driver_select)(struct device *dev,
 				     struct sof_audio_dev *sof_audio); /* optional */
 
 	/* DAI ops */

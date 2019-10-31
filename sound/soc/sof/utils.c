@@ -163,3 +163,11 @@ struct sof_ipc_fw_ready *snd_sof_get_fw_ready(struct device *dev)
 	return &sdev->fw_ready;
 }
 EXPORT_SYMBOL(snd_sof_get_fw_ready);
+
+struct snd_sof_pdata *snd_sof_get_pdata(struct device *dev)
+{
+	struct snd_sof_dev *sdev = snd_sof_get_sof_dev(dev);
+
+	return sdev->pdata;
+}
+EXPORT_SYMBOL(snd_sof_get_pdata);
