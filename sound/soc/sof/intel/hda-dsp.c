@@ -23,7 +23,7 @@
 #include "hda.h"
 #include "hda-ipc.h"
 
-static bool hda_enable_trace_D0I3_S0;
+static bool hda_enable_trace_D0I3_S0 = true;
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG)
 module_param_named(enable_trace_D0I3_S0, hda_enable_trace_D0I3_S0, bool, 0444);
 MODULE_PARM_DESC(enable_trace_D0I3_S0,
