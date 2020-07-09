@@ -39,6 +39,8 @@
 /* Command specific payload bits in secondary register */
 
 /* Disable DMA tracing (0 - keep tracing, 1 - to disable DMA trace) */
+#define HDA_PM_HOST_RESUME	BIT(5)
+#define HDA_PM_HOST_SUSPEND	BIT(6)
 #define HDA_PM_NO_DMA_TRACE	BIT(4)
 /* Prevent clock gating (0 - cg allowed, 1 - DSP clock always on) */
 #define HDA_PM_PCG		BIT(3)

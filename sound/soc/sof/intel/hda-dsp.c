@@ -701,6 +701,8 @@ int hda_dsp_resume(struct snd_sof_dev *sdev)
 	struct hdac_ext_link *hlink = NULL;
 #endif
 	int ret;
+	u32 flags = 0;
+	printk("RAJWA: we are in hda_dsp_resume()\n");
 
 	/* resume from D0I3 */
 	if (sdev->dsp_power_state.state == SOF_DSP_PM_D0) {
@@ -741,6 +743,14 @@ int hda_dsp_resume(struct snd_sof_dev *sdev)
 		/* restore and disable the system wakeup */
 		pci_restore_state(pci);
 		disable_irq_wake(pci->irq);
+
+		flags |= HDA_PM_HOST_RESUME;
+		ret = hda_dsp_send_pm_gate_ipc(sdev, flags);
+		if (ret < 0) {
+			dev_err(sdev->dev,
+				"error: PM_GATE ipc error %d\n", ret);
+		}
+
 		return 0;
 	}
 
@@ -806,11 +816,21 @@ int hda_dsp_suspend(struct snd_sof_dev *sdev, u32 target_state)
 				SOF_HDA_DSP_PM_D0I3 : 0,
 	};
 	int ret;
+	u32 flags = 0;
+	printk("RAJWA: we are in hda_dsp_suspend()\n");
 
 	/* cancel any attempt for DSP D0I3 */
 	cancel_delayed_work_sync(&hda->d0i3_work);
 
 	if (target_state == SOF_DSP_PM_D0) {
+		/* (TODO) inform DSP we go to suspend */
+		flags |= HDA_PM_HOST_SUSPEND;
+		ret = hda_dsp_send_pm_gate_ipc(sdev, flags);
+		if (ret < 0) {
+			dev_err(sdev->dev,
+				"error: PM_GATE ipc error %d\n", ret);
+		}
+
 		/* we can't keep a wakeref to display driver at suspend */
 		hda_codec_i915_display_power(sdev, false);
 
@@ -831,6 +851,7 @@ int hda_dsp_suspend(struct snd_sof_dev *sdev, u32 target_state)
 						HDA_VS_INTEL_EM2_L1SEN);
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+		printk("RAJWA: we power down resources");
 		/* clear rirb status */
 		snd_hdac_chip_writeb(bus, RIRBSTS, RIRB_INT_MASK);
 		/* disable CORB/RIRB */
