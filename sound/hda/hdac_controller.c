@@ -107,6 +107,7 @@ static void hdac_wait_for_cmd_dmas(struct hdac_bus *bus)
  */
 void snd_hdac_bus_stop_cmd_io(struct hdac_bus *bus)
 {
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	spin_lock_irq(&bus->reg_lock);
 	/* disable ringbuffer DMAs */
 	snd_hdac_chip_writeb(bus, RIRBCTL, 0);
@@ -119,6 +120,7 @@ void snd_hdac_bus_stop_cmd_io(struct hdac_bus *bus)
 	/* disable unsolicited responses */
 	snd_hdac_chip_updatel(bus, GCTL, AZX_GCTL_UNSOL, 0);
 	spin_unlock_irq(&bus->reg_lock);
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 }
 EXPORT_SYMBOL_GPL(snd_hdac_bus_stop_cmd_io);
 
@@ -512,9 +514,11 @@ EXPORT_SYMBOL_GPL(snd_hdac_bus_init_chip);
  */
 void snd_hdac_bus_stop_chip(struct hdac_bus *bus)
 {
+	printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	if (!bus->chip_init)
 		return;
 
+	printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	/* disable interrupts */
 	azx_int_disable(bus);
 	azx_int_clear(bus);
@@ -529,6 +533,7 @@ void snd_hdac_bus_stop_chip(struct hdac_bus *bus)
 	}
 
 	bus->chip_init = false;
+	printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 }
 EXPORT_SYMBOL_GPL(snd_hdac_bus_stop_chip);
 

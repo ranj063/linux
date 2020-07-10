@@ -191,15 +191,18 @@ int hda_dsp_ctrl_init_chip(struct snd_sof_dev *sdev, bool full_reset)
 	struct hdac_stream *stream;
 	int sd_offset, ret = 0;
 
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	if (bus->chip_init)
 		return 0;
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	snd_hdac_set_codec_wakeup(bus, true);
 #endif
 	hda_dsp_ctrl_misc_clock_gating(sdev, false);
 
 	if (full_reset) {
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 		/* reset HDA controller */
 		ret = hda_dsp_ctrl_link_reset(sdev, true);
 		if (ret < 0) {
@@ -220,6 +223,7 @@ int hda_dsp_ctrl_init_chip(struct snd_sof_dev *sdev, bool full_reset)
 	}
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	/* check to see if controller is ready */
 	if (!snd_hdac_chip_readb(bus, GCTL)) {
 		dev_dbg(bus->dev, "controller not ready!\n");
@@ -265,6 +269,7 @@ int hda_dsp_ctrl_init_chip(struct snd_sof_dev *sdev, bool full_reset)
 			  SOF_HDA_INT_CTRL_EN | SOF_HDA_INT_ALL_STREAM);
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	/* initialize the codec command I/O */
 	snd_hdac_bus_init_cmd_io(bus);
 #endif
@@ -291,11 +296,13 @@ int hda_dsp_ctrl_init_chip(struct snd_sof_dev *sdev, bool full_reset)
 	bus->chip_init = true;
 
 err:
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	hda_dsp_ctrl_misc_clock_gating(sdev, true);
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
 	snd_hdac_set_codec_wakeup(bus, false);
 #endif
 
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	return ret;
 }
 
@@ -305,9 +312,11 @@ void hda_dsp_ctrl_stop_chip(struct snd_sof_dev *sdev)
 	struct hdac_stream *stream;
 	int sd_offset;
 
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	if (!bus->chip_init)
 		return;
 
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	/* disable interrupts in stream descriptor */
 	list_for_each_entry(stream, &bus->stream_list, list) {
 		sd_offset = SOF_STREAM_SD_OFFSET(stream);
@@ -340,6 +349,7 @@ void hda_dsp_ctrl_stop_chip(struct snd_sof_dev *sdev)
 			  SOF_HDA_WAKESTS_INT_MASK);
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	/* clear rirb status */
 	snd_hdac_chip_writeb(bus, RIRBSTS, RIRB_INT_MASK);
 #endif
@@ -349,6 +359,7 @@ void hda_dsp_ctrl_stop_chip(struct snd_sof_dev *sdev)
 			  SOF_HDA_INT_CTRL_EN | SOF_HDA_INT_ALL_STREAM);
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 	/* disable CORB/RIRB */
 	snd_hdac_bus_stop_cmd_io(bus);
 #endif
@@ -361,4 +372,5 @@ void hda_dsp_ctrl_stop_chip(struct snd_sof_dev *sdev)
 	}
 
 	bus->chip_init = false;
+printk(KERN_DEBUG "Keyon: %s, %d\n", __func__, __LINE__);
 }
