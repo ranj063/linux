@@ -720,8 +720,9 @@ int hda_dsp_resume(struct snd_sof_dev *sdev)
 			}
 		}
 
-		/* reenable CORB/RIRB */
-		snd_hdac_bus_init_cmd_io(bus);
+		/* set up CORB/RIRB buffers if was on before suspend */
+		if (bus->cmd_dma_state)
+			snd_hdac_bus_init_cmd_io(bus);
 #endif
 
 		/* Set DSP power state */
@@ -831,10 +832,9 @@ int hda_dsp_suspend(struct snd_sof_dev *sdev, u32 target_state)
 						HDA_VS_INTEL_EM2_L1SEN);
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
-		/* clear rirb status */
-		snd_hdac_chip_writeb(bus, RIRBSTS, RIRB_INT_MASK);
-		/* disable CORB/RIRB */
-		snd_hdac_bus_stop_cmd_io(bus);
+               /* stop the CORB/RIRB DMA if it is On */
+               if (bus->cmd_dma_state)
+                       snd_hdac_bus_stop_cmd_io(bus);
 
 		/* no link can be powered in s0ix state */
 		ret = snd_hdac_ext_bus_link_power_down_all(bus);
