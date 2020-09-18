@@ -411,6 +411,24 @@ void snd_sof_ipc_msgs_rx(struct snd_sof_dev *sdev)
 }
 EXPORT_SYMBOL(snd_sof_ipc_msgs_rx);
 
+void snd_sof_ipc2_msgs_rx(struct snd_sof_dev *sdev, u32 msg, u32 msg_ext)
+{
+	if (!SOF_IPC2_GLB_NOTIFY_MSG_TYPE(msg))
+		return;
+
+	switch (SOF_IPC2_GLB_NOTIFY_TYPE(msg)) {
+	case SOF_IPC2_GLB_NOTIFY_FW_READY:
+		sdev->fw_state = SOF_FW_BOOT_COMPLETE;
+
+		/* wake up firmware loader */
+		wake_up(&sdev->boot_wait);
+		break;
+	default:
+		break;
+	}
+}
+EXPORT_SYMBOL(snd_sof_ipc2_msgs_rx);
+
 /*
  * IPC trace mechanism.
  */
