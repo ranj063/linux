@@ -128,6 +128,24 @@
 /* maximum message size for mailbox Tx/Rx */
 #define SOF_IPC_MSG_MAX_SIZE			384
 
+#define SOF_IPC2_GLB_NOTIFY_TYPE_SHIFT	16
+#define SOF_IPC2_GLB_NOTIFY_TYPE_MASK	0xFF
+#define SOF_IPC2_GLB_NOTIFY_TYPE(x)		(((x) >> SOF_IPC2_GLB_NOTIFY_TYPE_SHIFT) \
+						& SOF_IPC2_GLB_NOTIFY_TYPE_MASK)
+
+#define SOF_IPC2_GLB_NOTIFY_MSG_TYPE_SHIFT	24
+#define SOF_IPC2_GLB_NOTIFY_MSG_TYPE_MASK	0x1F
+#define SOF_IPC2_GLB_NOTIFY_MSG_TYPE(x)	(((x) >> SOF_IPC2_GLB_NOTIFY_MSG_TYPE_SHIFT)	\
+						& SOF_IPC2_GLB_NOTIFY_MSG_TYPE_MASK)
+
+enum cavs_ipc_notification_type {
+	SOF_IPC2_GLB_NOTIFY_PHRASE_DETECTED = 4,
+	SOF_IPC2_GLB_NOTIFY_RESOURCE_EVENT = 5,
+	SOF_IPC2_GLB_NOTIFY_LOG_BUFFER_STATUS = 6,
+	SOF_IPC2_GLB_NOTIFY_TIMESTAMP_CAPTURED = 7,
+	SOF_IPC2_GLB_NOTIFY_FW_READY = 8
+};
+
 /*
  * Structure Header - Header for all IPC structures except command structs.
  * The size can be greater than the structure size and that means there is
