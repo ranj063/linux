@@ -24,6 +24,9 @@
 /* In ASCII `XMan` */
 #define SOF_EXT_MAN_MAGIC_NUMBER	0x6e614d58
 
+/* In ASCII  $AE1 */
+#define CAVS_EXT_MAN_MAGIC_NUMBER    0x31454124
+
 /* Build u32 number in format MMmmmppp */
 #define SOF_EXT_MAN_BUILD_VERSION(MAJOR, MINOR, PATH) ((uint32_t)( \
 	((MAJOR) << 24) | \
@@ -51,6 +54,14 @@ struct sof_ext_man_header {
 				/*< not related with following content */
 
 	/* just after this header should be list of ext_man_elem_* elements */
+} __packed;
+
+struct cavs_ext_manifest_hdr {
+	u32 id;
+	u32 len;
+	u16 version_major;
+	u16 version_minor;
+	u32 entries;
 } __packed;
 
 /* Now define extended manifest elements */
