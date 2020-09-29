@@ -248,6 +248,26 @@ static const struct sof_dev_desc tglh_desc = {
 };
 #endif
 
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_METEORLAKE)
+static const struct sof_dev_desc mtl_desc = {
+/* FIXME */
+//	.machines               = snd_soc_acpi_intel_tgl_machines,
+//	.alt_machines		= snd_soc_acpi_intel_tgl_sdw_machines,
+	.use_acpi_target_states	= true,
+	.resindex_lpe_base      = 0,
+	.resindex_pcicfg_base   = -1,
+	.resindex_imr_base      = -1,
+	.irqindex_host_ipc      = -1,
+	.resindex_dma_base      = -1,
+	.chip_info = &mtl_chip_info,
+	.default_fw_path = "intel/sof",
+	.default_tplg_path = "intel/sof-tplg",
+	.default_fw_filename = "sof-mtl.ri",
+	.nocodec_tplg_filename = "sof-mtl-nocodec.tplg",
+	.ops = &sof_mtl_ops,
+};
+#endif
+
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_ELKHARTLAKE)
 static const struct sof_dev_desc ehl_desc = {
 	.machines               = snd_soc_acpi_intel_ehl_machines,
@@ -492,6 +512,10 @@ static const struct pci_device_id sof_pci_ids[] = {
 		.driver_data = (unsigned long)&ehl_desc},
 	{ PCI_DEVICE(0x8086, 0x4b58),
 		.driver_data = (unsigned long)&ehl_desc},
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_METEORLAKE)
+	{ PCI_DEVICE(0x8086, 0x7E28), /* MTL-FPGA */
+		.driver_data = (unsigned long)&mtl_desc},
 #endif
 	{ 0, }
 };

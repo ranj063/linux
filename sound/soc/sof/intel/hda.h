@@ -614,6 +614,7 @@ int hda_dsp_cl_boot_firmware(struct snd_sof_dev *sdev);
 int hda_dsp_cl_boot_firmware_iccmax(struct snd_sof_dev *sdev);
 int hda_dsp_cl_boot_firmware_skl(struct snd_sof_dev *sdev);
 int hda_dsp_cl_init(struct snd_sof_dev *sdev, int stream_tag);
+#define HDA_FW_BOOT_ATTEMPTS	3
 
 /* pre and post fw run ops */
 int hda_dsp_pre_fw_run(struct snd_sof_dev *sdev);
@@ -734,12 +735,14 @@ extern struct snd_soc_dai_driver skl_dai[];
 extern const struct snd_sof_dsp_ops sof_apl_ops;
 extern const struct snd_sof_dsp_ops sof_cnl_ops;
 extern const struct snd_sof_dsp_ops sof_tgl_ops;
+extern const struct snd_sof_dsp_ops sof_mtl_ops;
 
 extern const struct sof_intel_dsp_desc apl_chip_info;
 extern const struct sof_intel_dsp_desc cnl_chip_info;
 extern const struct sof_intel_dsp_desc skl_chip_info;
 extern const struct sof_intel_dsp_desc icl_chip_info;
 extern const struct sof_intel_dsp_desc tgl_chip_info;
+extern const struct sof_intel_dsp_desc mtl_chip_info;
 extern const struct sof_intel_dsp_desc tglh_chip_info;
 extern const struct sof_intel_dsp_desc ehl_chip_info;
 extern const struct sof_intel_dsp_desc jsl_chip_info;
