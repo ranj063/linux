@@ -299,6 +299,7 @@ const struct snd_sof_dsp_ops sof_cnl_ops = {
 	.core_power_down = hda_dsp_core_reset_power_down,
 
 	/* firmware run */
+	.cl_dsp_init = hda_dsp_cl_init,
 	.run = hda_dsp_cl_boot_firmware,
 
 	/* trace callback */

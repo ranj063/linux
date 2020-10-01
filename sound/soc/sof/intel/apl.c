@@ -86,6 +86,7 @@ const struct snd_sof_dsp_ops sof_apl_ops = {
 	.load_firmware = snd_sof_load_firmware_raw,
 
 	/* firmware run */
+	.cl_dsp_init = hda_dsp_cl_init,
 	.run = hda_dsp_cl_boot_firmware,
 
 	/* pre/post fw run */

@@ -100,6 +100,15 @@ static inline int snd_sof_dsp_post_fw_run(struct snd_sof_dev *sdev)
 	return 0;
 }
 
+/* code loader init */
+static inline int snd_sof_dsp_cl_init(struct snd_sof_dev *sdev, int stream_tag)
+{
+	if (sof_ops(sdev)->cl_dsp_init)
+		return sof_ops(sdev)->cl_dsp_init(sdev, stream_tag);
+
+	return 0;
+}
+
 /* misc */
 
 /**

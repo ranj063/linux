@@ -613,6 +613,7 @@ int hda_dsp_ipc_cmd_done(struct snd_sof_dev *sdev, int dir);
 int hda_dsp_cl_boot_firmware(struct snd_sof_dev *sdev);
 int hda_dsp_cl_boot_firmware_iccmax(struct snd_sof_dev *sdev);
 int hda_dsp_cl_boot_firmware_skl(struct snd_sof_dev *sdev);
+int hda_dsp_cl_init(struct snd_sof_dev *sdev, int stream_tag);
 
 /* pre and post fw run ops */
 int hda_dsp_pre_fw_run(struct snd_sof_dev *sdev);
