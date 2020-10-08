@@ -458,8 +458,10 @@ static const struct pci_device_id sof_pci_ids[] = {
 		.driver_data = (unsigned long)&cfl_desc},
 #endif
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_ICELAKE)
+#if 0
 	{ PCI_DEVICE(0x8086, 0x34C8), /* ICL-LP */
 		.driver_data = (unsigned long)&icl_desc},
+#endif
 	{ PCI_DEVICE(0x8086, 0x3dc8), /* ICL-H */
 		.driver_data = (unsigned long)&icl_desc},
 
