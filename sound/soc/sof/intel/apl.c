@@ -49,6 +49,7 @@ const struct snd_sof_dsp_ops sof_apl_ops = {
 	.fw_ready	= sof_fw_ready,
 	.get_mailbox_offset = hda_dsp_ipc_get_mailbox_offset,
 	.get_window_offset = hda_dsp_ipc_get_window_offset,
+	.check_ipc_irq	= hda_dsp_check_ipc_irq,
 
 	.ipc_msg_data	= hda_ipc_msg_data,
 	.ipc_pcm_params	= hda_ipc_pcm_params,
