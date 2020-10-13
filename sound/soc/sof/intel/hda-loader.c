@@ -241,6 +241,8 @@ static int cl_cleanup(struct snd_sof_dev *sdev, struct snd_dma_buffer *dmab,
 
 static int cl_copy_fw(struct snd_sof_dev *sdev, struct hdac_ext_stream *stream)
 {
+	struct sof_intel_hda_dev *hda = sdev->pdata->hw_pdata;
+	const struct sof_intel_dsp_desc *chip = hda->desc;
 	unsigned int reg;
 	int ret, status;
 
@@ -251,7 +253,7 @@ static int cl_copy_fw(struct snd_sof_dev *sdev, struct hdac_ext_stream *stream)
 	}
 
 	status = snd_sof_dsp_read_poll_timeout(sdev, HDA_DSP_BAR,
-					HDA_DSP_SRAM_REG_ROM_STATUS, reg,
+					chip->rom_status_reg, reg,
 					((reg & HDA_DSP_ROM_STS_MASK)
 						== HDA_DSP_ROM_FW_ENTERED),
 					HDA_DSP_REG_POLL_INTERVAL_US,
