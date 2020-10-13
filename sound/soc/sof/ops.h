@@ -290,6 +290,14 @@ static inline int snd_sof_dsp_send_msg(struct snd_sof_dev *sdev,
 	return sof_ops(sdev)->send_msg(sdev, msg);
 }
 
+static inline bool snd_sof_dsp_check_ipc_irq(struct snd_sof_dev *sdev)
+{
+	if (sof_ops(sdev)->check_ipc_irq)
+		return sof_ops(sdev)->check_ipc_irq(sdev);
+
+	return false;
+}
+
 /* host DMA trace */
 static inline int snd_sof_dma_trace_init(struct snd_sof_dev *sdev,
 					 u32 *stream_tag)
