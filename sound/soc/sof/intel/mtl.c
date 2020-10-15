@@ -458,6 +458,41 @@ int mtl_dsp_ipc_get_window_offset(struct snd_sof_dev *sdev, u32 id)
 	return MTL_SRAM_WINDOW_OFFSET(id);
 }
 
+int mtl_fw_ready(struct snd_sof_dev *sdev, u32 msg_id)
+{
+	int inbox_offset, inbox_size;
+	int outbox_offset, outbox_size;
+
+	/* mailbox must be on 4k boundary */
+	inbox_offset = snd_sof_dsp_get_mailbox_offset(sdev);
+	if (inbox_offset < 0) {
+		dev_err(sdev->dev, "error: have no mailbox offset\n");
+		return inbox_offset;
+	}
+
+	dev_dbg(sdev->dev, "ipc: DSP is ready 0x%8.8x offset 0x%x\n",
+		msg_id, inbox_offset);
+
+	/* no need to re-check version/ABI for subsequent boots */
+	if (!sdev->first_boot)
+		return 0;
+
+	inbox_size = MTL_DSP_MBOX_UPLINK_SIZE;
+	outbox_offset = MTL_DSP_MBOX_DOWNLINK_OFFSET;
+	outbox_size = MTL_DSP_MBOX_DOWNLINK_SIZE;
+
+	snd_sof_dsp_mailbox_init(sdev, inbox_offset, inbox_size,
+			 outbox_offset, outbox_size);
+
+	dev_dbg(sdev->dev, " mailbox upstream 0x%x - size 0x%x\n",
+		inbox_offset, inbox_size);
+	dev_dbg(sdev->dev, " mailbox downstream 0x%x - size 0x%x\n",
+		outbox_offset, outbox_size);
+
+
+	return 0;
+}
+
 /* Meteorlake ops */
 const struct snd_sof_dsp_ops sof_mtl_ops = {
 	/* probe and remove */
@@ -479,7 +514,7 @@ const struct snd_sof_dsp_ops sof_mtl_ops = {
 
 	/* ipc */
 	.send_msg	= mtl_ipc_send_msg,
-	.fw_ready	= sof_fw_ready,
+	.fw_ready	= mtl_fw_ready,
 	.get_mailbox_offset = mtl_dsp_ipc_get_mailbox_offset,
 	.get_window_offset = mtl_dsp_ipc_get_window_offset,
 	.check_ipc_irq	= mtl_dsp_check_ipc_irq,

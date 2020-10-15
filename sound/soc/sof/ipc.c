@@ -413,15 +413,25 @@ EXPORT_SYMBOL(snd_sof_ipc_msgs_rx);
 
 void snd_sof_ipc2_msgs_rx(struct snd_sof_dev *sdev, u32 msg, u32 msg_ext)
 {
+	int err = 0;
+
 	if (!SOF_IPC2_GLB_NOTIFY_MSG_TYPE(msg))
 		return;
 
 	switch (SOF_IPC2_GLB_NOTIFY_TYPE(msg)) {
 	case SOF_IPC2_GLB_NOTIFY_FW_READY:
-		sdev->fw_state = SOF_FW_BOOT_COMPLETE;
+		/* check for FW boot completion */
+		if (sdev->fw_state == SOF_FW_BOOT_IN_PROGRESS) {
+			err = sof_ops(sdev)->fw_ready(sdev, msg);
+			if (err < 0)
+				sdev->fw_state = SOF_FW_BOOT_READY_FAILED;
+			else
+				sdev->fw_state = SOF_FW_BOOT_COMPLETE;
 
-		/* wake up firmware loader */
-		wake_up(&sdev->boot_wait);
+			/* wake up firmware loader */
+			wake_up(&sdev->boot_wait);
+		}
+
 		break;
 	default:
 		break;
