@@ -448,6 +448,16 @@ static int mtl_dsp_core_power_down(struct snd_sof_dev *sdev, unsigned int core_m
 	return ret;
 }
 
+int mtl_dsp_ipc_get_mailbox_offset(struct snd_sof_dev *sdev)
+{
+	return MTL_DSP_MBOX_UPLINK_OFFSET;
+}
+
+int mtl_dsp_ipc_get_window_offset(struct snd_sof_dev *sdev, u32 id)
+{
+	return MTL_SRAM_WINDOW_OFFSET(id);
+}
+
 /* Meteorlake ops */
 const struct snd_sof_dsp_ops sof_mtl_ops = {
 	/* probe and remove */
@@ -470,8 +480,8 @@ const struct snd_sof_dsp_ops sof_mtl_ops = {
 	/* ipc */
 	.send_msg	= mtl_ipc_send_msg,
 	.fw_ready	= sof_fw_ready,
-	.get_mailbox_offset = hda_dsp_ipc_get_mailbox_offset,
-	.get_window_offset = hda_dsp_ipc_get_window_offset,
+	.get_mailbox_offset = mtl_dsp_ipc_get_mailbox_offset,
+	.get_window_offset = mtl_dsp_ipc_get_window_offset,
 	.check_ipc_irq	= mtl_dsp_check_ipc_irq,
 
 	.ipc_msg_data	= hda_ipc_msg_data,
