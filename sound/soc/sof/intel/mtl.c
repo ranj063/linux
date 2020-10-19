@@ -21,78 +21,6 @@ static const struct snd_sof_debugfs_map mtl_dsp_debugfs[] = {
 	{"dsp", HDA_DSP_BAR,  0, 0x10000, SOF_DEBUGFS_ACCESS_ALWAYS},
 };
 
-static char *IPC2Status_msg[] =
-{
-	"The operation was successful",
-	"Invalid parameter specified",
-	"Unknown message type specified",
-	"Not enough space in the IPC reply buffer to complete the request",
-	"The system or resource is busy",
-	"Replaced ADSP IPC PENDING (unused) - according to cAVS v0.5",
-	"Unknown error while processing the request",
-	"Unsupported operation requested",
-	"Reserved (ADSP_STAGE_UNINITIALIZED removed)",
-	"Specified resource not found",
-	"A resource's ID requested to be created is already assigned",
-	"Reserved (ADSP_IPC_OUT_OF_MIPS removed)",
-	"Required resource is in invalid state",
-	"Requested power transition failed to complete",
-	"Manifest of the library being loaded is invalid",
-	"Requested service or data is unavailable on the target platform",
-	"Library target address is out of storage memory range",
-	"Reserved",
-	"Image verification by CSE failed",
-	"General module management error",
-	"Module loading failed",
-	"Integrity check of the loaded module content failed",
-	"Attempt to unload code of the module in use",
-	"Other failure of module instance initialization request",
-	"Reserved (ADSP_IPC_OUT_OF_MIPS removed)",
-	"Reserved (ADSP_IPC_CONFIG_GET_ERROR removed)",
-	"Reserved (ADSP_IPC_CONFIG_SET_ERROR removed)",
-	"Reserved (ADSP_IPC_LARGE_CONFIG_GET_ERROR removed)",
-	"Reserved (ADSP_IPC_LARGE_CONFIG_SET_ERROR removed)",
-	"Invalid (out of range) module ID provided",
-	"Invalid module instance ID provided",
-	"Invalid queue (pin) ID provided",
-	"Invalid destination queue (pin) ID provided",
-	"Reserved (ADSP_IPC_BIND_UNBIND_DST_SINK_UNSUPPORTED removed)",
-	"Reserved (ADSP_IPC_UNLOAD_INST_EXISTS removed)",
-	"Invalid target code ID provided",
-	"Injection DMA buffer is too small for probing the input pin",
-	"Extraction DMA buffer is too small for probing the output pin",
-	"Invalid ID of configuration item provided in TLV list",
-	"Invalid length of configuration item provided in TLV list",
-	"Invalid structure of configuration item provided",
-	"Initialization of DMA Gateway failed",
-	"Invalid ID of gateway provided",
-	"Setting state of DMA Gateway failed",
-	"DMA_CONTROL message targeting gateway not allocated yet",
-	"Attempt to configure SCLK while I2S port is running",
-	"Attempt to configure MCLK while I2S port is running",
-	"Attempt to stop SCLK that is not running",
-	"Attempt to stop MCLK that is not running",
-	"Reserved (ADSP_IPC_PIPELINE_NOT_INITIALIZED removed)",
-	"Reserved (ADSP_IPC_PIPELINE_NOT_EXIST removed)",
-	"Reserved (ADSP_IPC_PIPELINE_SAVE_FAILED removed)",
-	"Reserved (ADSP_IPC_PIPELINE_RESTORE_FAILED removed)",
-	"Reverted for ULP purposes",
-	"Reserved (ADSP_IPC_PIPELINE_ALREADY_EXISTS removed)",
-	"Invalid max IPC status"
-};
-
-static void mtl_check_reply_status(struct snd_sof_dev *sdev, u32 msg)
-{
-	u32 status = msg & SOF_IPC2_REPLY_STATUS_MASK;
-	if (!status)
-		dev_dbg(sdev->dev, "IPC replied successfully");
-
-	if (status <= SOF_IPC2_MAX_STATUS)
-		dev_err(sdev->dev, "FW reported error: %s", IPC2Status_msg[status]);
-	else
-		dev_err(sdev->dev, "FW reported unknown error");
-}
-
 static void mtl_ipc_host_done(struct snd_sof_dev *sdev);
 static void mtl_ipc_dsp_done(struct snd_sof_dev *sdev);
 
@@ -359,6 +287,7 @@ irqreturn_t mtl_ipc_irq_thread(int irq, void *context)
 	u32 hipcida;
 	u32 hipctdr;
 	u32 hipctdd;
+	u32 hipcidd;
 	u32 msg;
 	u32 msg_ext;
 	bool ipc_irq = false;
@@ -400,10 +329,10 @@ irqreturn_t mtl_ipc_irq_thread(int irq, void *context)
 			msg, msg_ext);
 
 		/* handle messages from DSP */
-		if ((hipctdr & SOF_IPC2_GLB_NOTIFY_DIR_MASK) == SOF_IPC2_MSG_REPLY)
-			mtl_check_reply_status(sdev, msg);
-		else
-			snd_sof_ipc2_msgs_rx(sdev, msg, msg_ext);
+//		if ((hipctdr & SOF_IPC_PANIC_MAGIC_MASK) == SOF_IPC_PANIC_MAGIC)
+//			snd_sof_dsp_panic(sdev, HDA_DSP_PANIC_OFFSET(msg_ext));
+//		else
+		snd_sof_ipc2_msgs_rx(sdev, msg, msg_ext);
 
 		mtl_ipc_host_done(sdev);
 
