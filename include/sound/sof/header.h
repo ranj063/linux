@@ -138,12 +138,157 @@
 #define SOF_IPC2_GLB_NOTIFY_MSG_TYPE(x)	(((x) >> SOF_IPC2_GLB_NOTIFY_MSG_TYPE_SHIFT)	\
 						& SOF_IPC2_GLB_NOTIFY_MSG_TYPE_MASK)
 
-enum cavs_ipc_notification_type {
+enum sof_ipc2_notification_type {
 	SOF_IPC2_GLB_NOTIFY_PHRASE_DETECTED = 4,
 	SOF_IPC2_GLB_NOTIFY_RESOURCE_EVENT = 5,
 	SOF_IPC2_GLB_NOTIFY_LOG_BUFFER_STATUS = 6,
 	SOF_IPC2_GLB_NOTIFY_TIMESTAMP_CAPTURED = 7,
 	SOF_IPC2_GLB_NOTIFY_FW_READY = 8
+};
+
+//Request message from FW
+#define SOF_IPC2_MSG_REQUEST	0
+//Reply message from FW
+#define SOF_IPC2_MSG_REPLY	1
+
+#define SOF_IPC2_GLB_NOTIFY_DIR_MASK	BIT(29)
+#define SOF_IPC2_REPLY_STATUS_MASK	GENMASK(23, 0)
+
+enum IPC2Status
+{
+    //! The operation was successful.
+    SOF_IPC2_SUCCESS = 0,
+
+    //! Invalid parameter specified.
+    SOF_IPC2_ERROR_INVALID_PARAM = 1,
+    //! Unknown message type specified.
+    SOF_IPC2_UNKNOWN_MESSAGE_TYPE = 2,
+    //! Not enough space in the IPC reply buffer to complete the request.
+    SOF_IPC2_OUT_OF_MEMORY = 3,
+
+    //! The system or resource is busy.
+    SOF_IPC2_BUSY = 4,
+    //! Replaced ADSP IPC PENDING (unused) - according to cAVS v0.5.
+    SOF_IPC2_BAD_STATE = 5,
+    //! Unknown error while processing the request.
+    SOF_IPC2_FAILURE = 6,
+    //! Unsupported operation requested.
+    SOF_IPC2_INVALID_REQUEST = 7,
+    //! Reserved (ADSP_STAGE_UNINITIALIZED removed).
+    SOF_IPC2_RSVD_8 = 8,
+
+    //! Specified resource not found.
+    SOF_IPC2_INVALID_RESOURCE_ID = 9,
+    //! A resource's ID requested to be created is already assigned.
+    SOF_IPC2_RESOURCE_ID_EXISTS = 10,
+
+    //! Reserved (SOF_IPC2_OUT_OF_MIPS removed).
+    SOF_IPC2_RSVD_11 = 11,
+
+    //! Required resource is in invalid state.
+    SOF_IPC2_INVALID_RESOURCE_STATE = 12,
+
+    //! Requested power transition failed to complete.
+    SOF_IPC2_POWER_TRANSITION_FAILED = 13,
+
+    //! Manifest of the library being loaded is invalid.
+    SOF_IPC2_INVALID_MANIFEST = 14,
+
+    //! Requested service or data is unavailable on the target platform.
+    SOF_IPC2_UNAVAILABLE = 15,
+
+    /* Load/unload library specific codes */
+
+    //! Library target address is out of storage memory range.
+    SOF_IPC2_LOAD_ADDRESS_OUT_OF_RANGE = 42,
+
+    //! Reserved
+    SOF_IPC2_RSVD_43 = 43,
+
+    //! Image verification by CSE failed.
+    SOF_IPC2_CSE_VALIDATION_FAILED = 44,
+
+    //! General module management error.
+    SOF_IPC2_MOD_MGMT_ERROR = 100,
+    //! Module loading failed.
+    SOF_IPC2_MOD_LOAD_CL_FAILED = 101,
+    //! Integrity check of the loaded module content failed.
+    SOF_IPC2_MOD_LOAD_INVALID_HASH = 102,
+
+    //! Attempt to unload code of the module in use.
+    ADSP_MOD_INSTANCE_EXISTS = 103,
+    //! Other failure of module instance initialization request.
+    SOF_IPC2_MOD_NOT_INITIALIZED = 104,
+    //! Reserved (SOF_IPC2_OUT_OF_MIPS removed).
+    SOF_IPC2_RSVD_105 = 105,
+    //! Reserved (SOF_IPC2_CONFIG_GET_ERROR removed).
+    SOF_IPC2_RSVD_106 = 106,
+    //! Reserved (SOF_IPC2_CONFIG_SET_ERROR removed).
+    SOF_IPC2_RSVD_107 = 107,
+    //! Reserved (SOF_IPC2_LARGE_CONFIG_GET_ERROR removed).
+    SOF_IPC2_RSVD_108 = 108,
+    //! Reserved (SOF_IPC2_LARGE_CONFIG_SET_ERROR removed).
+    SOF_IPC2_RSVD_109 = 109,
+
+    //! Invalid (out of range) module ID provided.
+    SOF_IPC2_MOD_INVALID_ID  = 110,
+    //! Invalid module instance ID provided.
+    SOF_IPC2_MOD_INST_INVALID_ID  = 111,
+    //! Invalid queue (pin) ID provided.
+    SOF_IPC2_QUEUE_INVALID_ID = 112,
+    //! Invalid destination queue (pin) ID provided.
+    SOF_IPC2_QUEUE_DST_INVALID_ID = 113,
+    //! Reserved (SOF_IPC2_BIND_UNBIND_DST_SINK_UNSUPPORTED removed).
+    SOF_IPC2_RSVD_114 = 114,
+    //! Reserved (SOF_IPC2_UNLOAD_INST_EXISTS removed).
+    SOF_IPC2_RSVD_115 = 115,
+    //! Invalid target code ID provided.
+    SOF_IPC2_INVALID_CORE_ID = 116,
+
+    //! Injection DMA buffer is too small for probing the input pin.
+    SOF_IPC2_PROBE_DMA_INJECTION_BUFFER_TOO_SMALL = 117,
+    //! Extraction DMA buffer is too small for probing the output pin.
+    SOF_IPC2_PROBE_DMA_EXTRACTION_BUFFER_TOO_SMALL = 118,
+
+    //! Invalid ID of configuration item provided in TLV list.
+    SOF_IPC2_INVALID_CONFIG_PARAM_ID = 120,
+    //! Invalid length of configuration item provided in TLV list.
+    SOF_IPC2_INVALID_CONFIG_DATA_LEN = 121,
+    //! Invalid structure of configuration item provided.
+    SOF_IPC2_INVALID_CONFIG_DATA_STRUCT = 122,
+
+    //! Initialization of DMA Gateway failed.
+    SOF_IPC2_GATEWAY_NOT_INITIALIZED = 140,
+    //! Invalid ID of gateway provided.
+    SOF_IPC2_GATEWAY_NOT_EXIST = 141,
+    //! Setting state of DMA Gateway failed.
+    SOF_IPC2_GATEWAY_STATE_NOT_SET = 142,
+    //! DMA_CONTROL message targeting gateway not allocated yet.
+    SOF_IPC2_GATEWAY_NOT_ALLOCATED = 143,
+
+    //! Attempt to configure SCLK while I2S port is running.
+    SOF_IPC2_SCLK_ALREADY_RUNNING = 150,
+    //! Attempt to configure MCLK while I2S port is running.
+    SOF_IPC2_MCLK_ALREADY_RUNNING = 151,
+    //! Attempt to stop SCLK that is not running.
+    SOF_IPC2_NO_RUNNING_SCLK = 152,
+    //! Attempt to stop MCLK that is not running.
+    SOF_IPC2_NO_RUNNING_MCLK = 153,
+
+    //! Reserved (SOF_IPC2_PIPELINE_NOT_INITIALIZED removed).
+    SOF_IPC2_RSVD_160 = 160,
+    //! Reserved (SOF_IPC2_PIPELINE_NOT_EXIST removed).
+    SOF_IPC2_RSVD_161 = 161,
+    //! Reserved (SOF_IPC2_PIPELINE_SAVE_FAILED removed).
+    SOF_IPC2_RSVD_162 = 162,
+    //! Reserved (SOF_IPC2_PIPELINE_RESTORE_FAILED removed).
+    SOF_IPC2_RSVD_163 = 163,
+    //! Reverted for ULP purposes.
+    SOF_IPC2_PIPELINE_STATE_NOT_SET = 164,
+    //! Reserved (SOF_IPC2_PIPELINE_ALREADY_EXISTS removed).
+    SOF_IPC2_RSVD_165 = 165,
+
+    SOF_IPC2_MAX_STATUS = 166
 };
 
 /*
