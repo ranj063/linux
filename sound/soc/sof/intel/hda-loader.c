@@ -265,7 +265,7 @@ static int cl_copy_fw(struct snd_sof_dev *sdev, struct hdac_ext_stream *stream)
 
 	if (status < 0) {
 		dev_err(sdev->dev,
-			"error: %s: timeout HDA_DSP_SRAM_REG_ROM_STATUS read\n",
+			"error: %s: timeout ROM_STATUS_REG read\n",
 			__func__);
 	}
 
@@ -436,7 +436,7 @@ cleanup:
 		return chip_info->init_core_mask;
 
 	/* dump dsp registers and disable DSP upon error */
-	hda_dsp_dump(sdev, SOF_DBG_REGS | SOF_DBG_PCI | SOF_DBG_MBOX);
+	snd_sof_dsp_dbg_dump(sdev, 0);
 
 	/* disable DSP */
 	snd_sof_dsp_update_bits(sdev, HDA_DSP_PP_BAR,
