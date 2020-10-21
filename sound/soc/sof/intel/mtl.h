@@ -69,3 +69,6 @@
 
 #define MTL_DSP_REG_HfIMRIS1		0x162088
 #define MTL_DSP_REG_HfIMRIS1_IU_MASK	BIT(0)
+
+int snd_sof_fw_ext_man_parse_cavs(struct snd_sof_dev *sdev,
+				  const struct firmware *fw);

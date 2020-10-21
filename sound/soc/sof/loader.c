@@ -233,6 +233,9 @@ static int snd_sof_fw_ext_man_parse(struct snd_sof_dev *sdev,
 	uintptr_t iptr;
 	int ret = 0;
 
+	if (sof_ops(sdev)->fw_ext_man_parse)
+		return sof_ops(sdev)->fw_ext_man_parse(sdev, fw);
+
 	head = (struct sof_ext_man_header *)fw->data;
 	remaining = head->full_size - head->header_size;
 	ext_man_size = snd_sof_ext_man_size(fw);

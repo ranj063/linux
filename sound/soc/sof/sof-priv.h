@@ -139,10 +139,13 @@ struct snd_sof_dsp_ops {
 	bool (*check_ipc_irq)(struct snd_sof_dev *sdev); /* optional */
 
 	/* FW loading */
+	int (*fw_ext_man_parse)(struct snd_sof_dev *sof_dev,
+				const struct firmware *fw);
 	int (*load_firmware)(struct snd_sof_dev *sof_dev); /* mandatory */
 	int (*load_module)(struct snd_sof_dev *sof_dev,
 			   struct snd_sof_mod_hdr *hdr); /* optional */
 	int (*cl_dsp_init)(struct snd_sof_dev *sof_dev, int stream_tag); /* optional */
+
 	/*
 	 * FW ready checks for ABI compatibility and creates
 	 * memory windows at first boot
