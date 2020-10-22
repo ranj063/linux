@@ -6,7 +6,7 @@
 //
 
 /*
- * Hardware interface for audio DSP on Tigerlake.
+ * Hardware interface for audio DSP on Meteorlake.
  */
 
 #include "../ops.h"
