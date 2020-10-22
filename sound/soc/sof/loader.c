@@ -222,24 +222,6 @@ static ssize_t snd_sof_ext_man_size(const struct firmware *fw)
 	return 0;
 }
 
-static int snd_sof_cavs_ext_man_parse(struct snd_sof_dev *sdev,
-				      const struct firmware *fw)
-{
-	struct cavs_ext_manifest_hdr *hdr;
-
-	if (fw->size < sizeof(hdr)) {
-		dev_err(sdev->dev, "Invalid fw size\n");
-		return -EINVAL;
-	}
-
-	hdr = (struct cavs_ext_manifest_hdr *)fw->data;
-
-	if (hdr->id == CAVS_EXT_MAN_MAGIC_NUMBER)
-		return hdr->len;
-
-	return 0;
-}
-
 /* parse extended FW manifest data structures */
 static int snd_sof_fw_ext_man_parse(struct snd_sof_dev *sdev,
 				    const struct firmware *fw)
@@ -702,11 +684,9 @@ int snd_sof_load_firmware_raw(struct snd_sof_dev *sdev)
 	}
 
 	/* check for extended manifest */
-	//ext_man_size = snd_sof_fw_ext_man_parse(sdev, plat_data->fw);
-	ext_man_size = snd_sof_cavs_ext_man_parse(sdev, plat_data->fw);
+	ext_man_size = snd_sof_fw_ext_man_parse(sdev, plat_data->fw);
 	if (ext_man_size > 0) {
 		/* when no error occurred, drop extended manifest */
-		dev_dbg(sdev->dev, "drop extended manifest size %ld", ext_man_size);
 		plat_data->fw_offset = ext_man_size;
 	} else if (!ext_man_size) {
 		/* No extended manifest, so nothing to skip during FW load */
