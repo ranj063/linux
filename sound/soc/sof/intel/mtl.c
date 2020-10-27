@@ -51,13 +51,13 @@ out:
 
 int mtl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 {
+#if 0
 	struct sof_intel_hda_dev *hdev = sdev->pdata->hw_pdata;
 	struct sof_ipc_cmd_hdr *hdr;
 	u32 dr = 0;
 	u32 dd = 0;
 
 /* TODO: Fix compact IPC later */
-#if 0
 	/*
 	 * Currently the only compact IPC supported is the PM_GATE
 	 * IPC which is used for transitioning the DSP between the
@@ -220,7 +220,7 @@ int mtl_dsp_cl_init(struct snd_sof_dev *sdev, int stream_tag)
 	const struct sof_intel_dsp_desc *chip = hda->desc;
 	unsigned int status;
 	int ret;
-	int i;
+//	int i;
 
 	/* step 1: purge FW request */
 	snd_sof_dsp_write(sdev, HDA_DSP_BAR, chip->ipc_req,
@@ -287,7 +287,7 @@ irqreturn_t mtl_ipc_irq_thread(int irq, void *context)
 	u32 hipcida;
 	u32 hipctdr;
 	u32 hipctdd;
-	u32 hipcidd;
+//	u32 hipcidd;
 	u32 msg;
 	u32 msg_ext;
 	bool ipc_irq = false;
