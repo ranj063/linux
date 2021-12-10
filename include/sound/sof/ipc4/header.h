@@ -244,7 +244,7 @@ enum sof_ipc4_module_type {
 	SOF_IPC4_MOD_DELETE_INSTANCE,
 };
 
-struct sof_ipc4_basic_module_cfg {
+struct sof_ipc4_base_module_cfg {
 	uint32_t cpc; /* the max count of Cycles Per Chunk processing */
 	uint32_t ibs; /* input Buffer Size (in bytes)  */
 	uint32_t obs; /* output Buffer Size (in bytes) */
