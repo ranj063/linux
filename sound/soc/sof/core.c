@@ -249,6 +249,9 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 		goto fw_run_err;
 	}
 
+	/* HACK*/
+	return 0;
+
 	if (sof_debug_check_flag(SOF_DBG_ENABLE_TRACE)) {
 		sdev->dtrace_is_supported = true;
 
