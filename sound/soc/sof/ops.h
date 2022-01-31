@@ -19,7 +19,7 @@
 #include "sof-priv.h"
 
 #define sof_ops(sdev) \
-	(&((sdev)->pdata->desc->ops[(sdev)->pdata->ipc_type]))
+	((sdev)->pdata->desc->ops)
 
 static inline void sof_ops_init(struct snd_sof_dev *sdev)
 {
