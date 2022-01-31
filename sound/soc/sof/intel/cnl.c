@@ -15,6 +15,7 @@
  * Hardware interface for audio DSP on Cannonlake.
  */
 
+#include <sound/sof/ipc4/header.h>
 #include "../ops.h"
 #include "hda.h"
 #include "hda-ipc.h"
@@ -101,7 +102,18 @@ irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 			snd_sof_dsp_panic(sdev, HDA_DSP_PANIC_OFFSET(msg_ext),
 					  non_recoverable);
 		} else {
+			/* TODO: This is hacky. How do we pass the header for IPC4? IPC3 reads it
+			 * from the mailbox, so no need to pass anything
+			 */
+			struct sof_ipc4_msg ipc4_reply;
+
+			ipc4_reply.primary = msg;
+			ipc4_reply.extension = msg_ext;
+			sdev->ipc->msg.rx_data = &ipc4_reply;
+
 			snd_sof_ipc_msgs_rx(sdev);
+
+			sdev->ipc->msg.rx_data = NULL;
 		}
 
 		cnl_ipc_host_done(sdev);
