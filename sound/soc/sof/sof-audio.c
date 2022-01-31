@@ -86,6 +86,8 @@ int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 	if (!err)
 		dev_dbg(sdev->dev, "widget %s freed\n", swidget->widget->name);
 
+	swidget->complete = false;
+
 	return err;
 }
 EXPORT_SYMBOL(sof_widget_free);
@@ -150,7 +152,7 @@ int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 	}
 
 	/* restore kcontrols for widget */
-	if (tplg_ops->control->widget_kcontrol_setup) {
+	if (tplg_ops->control && tplg_ops->control->widget_kcontrol_setup) {
 		ret = tplg_ops->control->widget_kcontrol_setup(sdev, swidget);
 		if (ret < 0)
 			goto widget_free;
@@ -522,6 +524,7 @@ int sof_widget_list_free(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 
 	return ret;
 }
+
 
 /*
  * helper to determine if there are only D0i3 compatible

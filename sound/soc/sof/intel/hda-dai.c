@@ -168,6 +168,7 @@ static int hda_link_dai_widget_update(struct sof_intel_hda_stream *hda_stream,
 {
 	struct snd_sof_dai_config_data data;
 
+	data.type = SOF_DAI_INTEL_HDA;
 	data.dai_data = channel;
 
 	/* set up/free DAI widget and send DAI_CONFIG IPC */
@@ -279,8 +280,10 @@ static int hda_link_dai_config_pause_push_ipc(struct snd_soc_dapm_widget *w)
 static int hda_link_pcm_trigger(struct snd_pcm_substream *substream,
 				int cmd, struct snd_soc_dai *dai)
 {
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(dai->component);
 	struct hdac_ext_stream *hext_stream =
 				snd_soc_dai_get_dma_data(dai, substream);
+	const struct sof_ipc_tplg_ops *tplg_ops = sdev->ipc->ops->tplg;
 	struct sof_intel_hda_stream *hda_stream;
 	struct snd_soc_pcm_runtime *rtd;
 	struct snd_soc_dapm_widget *w;
@@ -311,6 +314,16 @@ static int hda_link_pcm_trigger(struct snd_pcm_substream *substream,
 		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_STOP:
+		if (tplg_ops->dai_config) {
+			ret = tplg_ops->dai_config(sdev, w->dobj.private,
+						   SOF_DAI_CONFIG_FLAGS_PRE_RESET, NULL);
+			if (ret < 0) {
+				dev_err(sdev->dev, "%s: DAI config reset failed for widget %s\n",
+					__func__, w->name);
+				return ret;
+			}
+		}
+
 		snd_hdac_ext_link_stream_clear(hext_stream);
 
 		/*
@@ -328,6 +341,16 @@ static int hda_link_pcm_trigger(struct snd_pcm_substream *substream,
 		hext_stream->link_prepared = 0;
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (tplg_ops->dai_config) {
+			ret = tplg_ops->dai_config(sdev, w->dobj.private,
+						   SOF_DAI_CONFIG_FLAGS_PRE_RESET, NULL);
+			if (ret < 0) {
+				dev_err(sdev->dev, "%s: DAI config reset failed for widget %s\n",
+					__func__, w->name);
+				return ret;
+			}
+		}
+
 		snd_hdac_ext_link_stream_clear(hext_stream);
 
 		ret = hda_link_dai_config_pause_push_ipc(w);
@@ -343,7 +366,7 @@ static int hda_link_pcm_trigger(struct snd_pcm_substream *substream,
 static int hda_link_hw_free(struct snd_pcm_substream *substream,
 			    struct snd_soc_dai *dai)
 {
-	unsigned int stream_tag;
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(dai->component);
 	struct sof_intel_hda_stream *hda_stream;
 	struct hdac_bus *bus;
 	struct hdac_ext_link *link;
@@ -351,6 +374,7 @@ static int hda_link_hw_free(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd;
 	struct hdac_ext_stream *hext_stream;
 	struct snd_soc_dapm_widget *w;
+	unsigned int stream_tag;
 	int ret;
 
 	hstream = substream->runtime->private_data;
@@ -363,6 +387,9 @@ static int hda_link_hw_free(struct snd_pcm_substream *substream,
 			"%s: hext_stream is not assigned\n", __func__);
 		return -EINVAL;
 	}
+
+	if (!hext_stream->link_prepared)
+		return 0;
 
 	hda_stream = hstream_to_sof_hda_stream(hext_stream);
 

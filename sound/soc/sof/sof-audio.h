@@ -47,7 +47,7 @@ enum sof_widget_op {
  */
 #define VOLUME_FWL	16
 
-#define SOF_TLV_ITEMS 3
+#define SOF_TLV_ITEMS	3
 
 static inline u32 mixer_to_ipc(unsigned int value, u32 *volume_map, int size)
 {
@@ -75,6 +75,7 @@ struct snd_sof_control;
 struct snd_sof_dai;
 
 struct snd_sof_dai_config_data {
+	int type;
 	int dai_index;
 	int dai_data; /* contains DAI-specific information */
 };
@@ -221,6 +222,16 @@ enum sof_tokens {
 	SOF_AFE_TOKENS,
 	SOF_CORE_TOKENS,
 	SOF_COMP_EXT_TOKENS,
+	SOF_GAIN_TOKENS,
+	SOF_IPC4_COMP_TOKENS,
+	SOF_IPC4_MIXER_TOKENS,
+	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
+	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
+	SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS,
+	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
+	SOF_IPC4_COPIER_TOKENS,
+	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_COPIER_FORMAT_TOKENS,
 
 	/* this should be the last */
 	SOF_TOKEN_COUNT,
@@ -336,6 +347,7 @@ struct snd_sof_widget {
 	int use_count; /* use_count will be protected by the PCM mutex held by the core */
 	int core;
 	int id;
+	int instance_id; /* dynamically set when the widget gets set up in the FW */
 
 	/*
 	 * Flag indicating if the widget should be set up dynamically when a PCM is opened.
@@ -350,6 +362,7 @@ struct snd_sof_widget {
 	struct snd_soc_dapm_widget *widget;
 	struct list_head list;	/* list in sdev widget list */
 	struct snd_sof_widget *pipe_widget;
+	void *module_info;
 
 	u8 uuid[SOF_UUID_SIZE];
 
@@ -504,7 +517,5 @@ int get_token_uuid(void *elem, void *object, u32 offset);
 int sof_update_ipc_object(struct snd_soc_component *scomp, void *object, enum sof_tokens token_id,
 			  struct snd_sof_tuple *tuples, int num_tuples,
 			  size_t object_size, int token_instance_num);
-int sof_pcm_setup_connected_widgets(struct snd_sof_dev *sdev, struct snd_soc_pcm_runtime *rtd,
-				    struct snd_sof_pcm *spcm, int dir);
 u32 vol_compute_gain(u32 value, int *tlv);
 #endif

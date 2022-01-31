@@ -11,6 +11,19 @@
 
 #include "sof-priv.h"
 
+/**
+ * struct sof_ipc4_private_data - IPC4-specific data
+ * @num_fw_modules : Number of modules in base FW
+ * @fw_modules: Array of base FW modules
+ * @manifest_fw_hdr_offset: FW header offset in the manifest
+ */
+struct sof_ipc4_data {
+	int num_fw_modules;
+	void *fw_modules;
+	u32 manifest_fw_hdr_offset;
+};
+
 extern const struct sof_ipc_ops ipc4_ops;
+extern const struct sof_ipc_tplg_control_ops tplg_ipc4_control_ops;
 
 #endif

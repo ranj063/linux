@@ -54,7 +54,7 @@ int snd_sof_volume_get(struct snd_kcontrol *kcontrol,
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	const struct sof_ipc_tplg_ops *tplg_ops = sdev->ipc->ops->tplg;
 
-	if (tplg_ops->control->volume_get)
+	if (tplg_ops->control && tplg_ops->control->volume_get)
 		return tplg_ops->control->volume_get(scontrol, ucontrol);
 
 	return 0;
@@ -69,7 +69,7 @@ int snd_sof_volume_put(struct snd_kcontrol *kcontrol,
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	const struct sof_ipc_tplg_ops *tplg_ops = sdev->ipc->ops->tplg;
 
-	if (tplg_ops->control->volume_put)
+	if (tplg_ops->control && tplg_ops->control->volume_put)
 		return tplg_ops->control->volume_put(scontrol, ucontrol);
 
 	return false;

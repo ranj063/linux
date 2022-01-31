@@ -1,0 +1,175 @@
+/* SPDX-License-Identifier: (GPL-2.0-only OR BSD-3-Clause) */
+/*
+ * This file is provided under a dual BSD/GPLv2 license.  When using or
+ * redistributing this file, you may do so under either license.
+ *
+ * Copyright(c) 2022 Intel Corporation. All rights reserved.
+ */
+
+#ifndef __INCLUDE_SOUND_SOF_IPC4_TOPOLOGY_H__
+#define __INCLUDE_SOUND_SOF_IPC4_TOPOLOGY_H__
+
+#include <sound/sof/ipc4/header.h>
+#include "ipc4-priv.h"
+
+#define SOF_IPC4_NODE_INDEX(x)	((x) & 0xff)
+#define SOF_IPC4_NODE_TYPE(x)  ((x) << 8)
+
+#define SOF_IPC4_GAIN_ALL_CHANNELS_MASK 0xffffffff
+#define SOF_IPC4_VOL_ZERO_DB	0x7fffffff
+
+/**
+ * struct sof_ipc4_ctrl_value_chan: generic channel mapped value data
+ * @channel: Channel ID
+ * @value: gain value
+ */
+struct sof_ipc4_ctrl_value_chan {
+	u32 channel;
+	u32 value;
+};
+
+/**
+ * struct sof_ipc4_control_data - IPC data for kcontrol IO
+ * @msg: message structure for kcontrol IO
+ * @index: pipeline ID
+ * @chanv: channel ID and value array used by volume type controls
+ * @data: Binary data used by binary controls
+ */
+struct sof_ipc4_control_data {
+	struct sof_ipc4_msg msg;
+	int index;
+
+	union {
+		struct sof_ipc4_ctrl_value_chan chanv[0];
+		struct sof_abi_hdr data[0];
+	};
+};
+
+/**
+ * struct sof_copier_gateway_cfg - IPC gateway configuration
+ * @node_id: ID of Gateway Node
+ * @dma_buffer_size: Preferred Gateway DMA buffer size (in bytes)
+ * @config_length: Length of gateway node configuration blob specified in #config_data
+ * config_data: Gateway node configuration blob
+ */
+struct sof_copier_gateway_cfg {
+	uint32_t node_id;
+	uint32_t dma_buffer_size;
+	uint32_t config_length;
+	uint32_t config_data[];
+};
+
+/**
+ * struct sof_ipc4_copier_data - IPC data for copier
+ * @base_config: Base configuration including input audio format
+ * @out_format: Output audio format
+ * @copier_feature_mask: Copier feature mask
+ * @gtw_cfg: Gateway configuration
+ */
+struct sof_ipc4_copier_data {
+	struct sof_ipc4_base_module_cfg base_config;
+	struct sof_ipc4_audio_format out_format;
+	uint32_t copier_feature_mask;
+	struct sof_copier_gateway_cfg gtw_cfg;
+};
+
+/**
+ * struct sof_ipc4_pipeline - pipeline config data
+ * @priority: Priority of this pipeline
+ * @lp_mode: Low power mode
+ * @mem_usage: Memory usage
+ * @state: Pipeline state
+ */
+struct sof_ipc4_pipeline {
+	uint32_t priority;
+	uint32_t lp_mode;
+	uint32_t mem_usage;
+	int state;
+	struct sof_ipc4_msg msg;
+};
+
+/**
+ * struct sof_ipc4_available_audio_format - Available audio formats
+ * @base_config: Available base config
+ * @out_audio_fmt: Available output audio format
+ * @ref_audio_fmt: Reference audio format to match runtime audio format
+ */
+struct sof_ipc4_available_audio_format {
+	struct sof_ipc4_base_module_cfg *base_config;
+	struct sof_ipc4_audio_format *out_audio_fmt;
+	struct sof_ipc4_audio_format *ref_audio_fmt;
+	u32 *dma_buffer_size;
+	int audio_fmt_num;
+};
+
+/**
+ * struct sof_ipc4_copier - copier config data
+ * @copier: IPC copier data
+ * @copier_config: Copier + blob
+ * @ipc_config_size: Size of copier_config
+ * @available_fmt: Available audio format
+ * @frame_fmt: frame format
+ */
+struct sof_ipc4_copier {
+	struct sof_ipc4_copier_data data;
+	u32 *copier_config;
+	uint32_t ipc_config_size;
+	void *ipc_config_data;
+	struct sof_ipc4_available_audio_format available_fmt;
+	u32 frame_fmt;
+	struct sof_ipc4_msg msg;
+	struct sof_ipc4_gtw_attributes gtw_attr;
+	u32 dai_type;
+	int dai_index;
+};
+
+/**
+ * struct sof_ipc4_gain_data - IPC gain blob
+ */
+struct sof_ipc4_gain_data {
+	uint32_t channels;
+	uint32_t init_val;
+	uint32_t curve_type;
+	uint32_t reserved;
+	uint32_t curve_duration;
+} __aligned(8);
+
+/**
+ * struct sof_ipc4_gain - gain config data
+ * @base_config: IPC base config data
+ * @data: IPC gain blob
+ * @available_fmt: Available audio format
+ */
+struct sof_ipc4_gain {
+	struct sof_ipc4_base_module_cfg base_config;
+	struct sof_ipc4_gain_data data;
+	struct sof_ipc4_available_audio_format available_fmt;
+	struct sof_ipc4_msg msg;
+};
+
+enum sof_ipc4_mixer_type {
+	sof_ipc4_mix_in,
+	sof_ipc4_mix_out
+};
+
+/**
+ * struct sof_ipc4_mixer - mixer config data
+ * @base_config: IPC base config data
+ * @type: mixer type (in or out)
+ * @available_fmt: Available audio format
+ * @msg: IPC4 message struct containing header and data info
+ */
+struct sof_ipc4_mixer {
+	struct sof_ipc4_base_module_cfg base_config;
+	enum sof_ipc4_mixer_type type;
+	struct sof_ipc4_available_audio_format available_fmt;
+	struct sof_ipc4_msg msg;
+};
+
+void sof_ipc4_dbg_audio_format(struct device *dev, struct sof_ipc4_audio_format *format,
+			       size_t object_size, int num_format, const char *widget_name,
+			       const char *function_name);
+
+int snd_sof_load_topology2(struct snd_soc_component *scomp, const char *file);
+int sof_ipc4_set_pipeline_state(struct snd_sof_dev *sdev, u32 id, u32 state);
+#endif

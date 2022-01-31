@@ -475,10 +475,8 @@ static int sof_copy_tuples(struct snd_sof_dev *sdev, struct snd_soc_tplg_vendor_
 	tokens = token_list[token_id].tokens;
 	num_tokens = token_list[token_id].count;
 
-	if (!tokens) {
-		dev_err(sdev->dev, "No token array defined for token ID: %d\n", token_id);
-		return -EINVAL;
-	}
+	if (!tokens)
+		return 0;
 
 	/* check if there's space in the tuples array for new tokens */
 	if (*num_copied_tuples >= tuples_size) {
@@ -1083,6 +1081,21 @@ static int spcm_bind(struct snd_soc_component *scomp, struct snd_sof_pcm *spcm,
 	return 0;
 }
 
+static int sof_get_token_value(u32 token_id, struct snd_sof_tuple *tuples, int num_tuples)
+{
+	int i;
+
+	if (!tuples)
+		return -EINVAL;
+
+	for (i = 0; i < num_tuples; i++) {
+		if (tuples[i].token == token_id)
+			return tuples[i].value.v;
+	}
+
+	return -EINVAL;
+}
+
 static int sof_widget_parse_tokens(struct snd_soc_component *scomp, struct snd_sof_widget *swidget,
 				   struct snd_soc_tplg_dapm_widget *tw,
 				   enum sof_tokens *object_token_list, int count)
@@ -1112,6 +1125,8 @@ static int sof_widget_parse_tokens(struct snd_soc_component *scomp, struct snd_s
 
 	/* parse token list for widget */
 	for (i = 0; i < count; i++) {
+		int num_sets = 1;
+
 		if (object_token_list[i] >= SOF_TOKEN_COUNT) {
 			dev_err(scomp->dev, "Invalid token id %d for widget %s\n",
 				object_token_list[i], swidget->widget->name);
@@ -1119,8 +1134,9 @@ static int sof_widget_parse_tokens(struct snd_soc_component *scomp, struct snd_s
 			goto err;
 		}
 
-		/* parse and save UUID in swidget */
-		if (object_token_list[i] == SOF_COMP_EXT_TOKENS) {
+		switch (object_token_list[i]) {
+		case SOF_COMP_EXT_TOKENS:
+			/* parse and save UUID in swidget */
 			ret = sof_parse_tokens(scomp, swidget,
 					       token_list[object_token_list[i]].tokens,
 					       token_list[object_token_list[i]].count,
@@ -1133,11 +1149,41 @@ static int sof_widget_parse_tokens(struct snd_soc_component *scomp, struct snd_s
 			}
 
 			continue;
+		case SOF_IPC4_IN_AUDIO_FORMAT_TOKENS:
+		case SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS:
+		case SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS:
+		case SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS:
+			num_sets = sof_get_token_value(SOF_TKN_COMP_NUM_AUDIO_FORMATS,
+						       swidget->tuples, swidget->num_tuples);
+
+			if (num_sets < 0) {
+				dev_err(sdev->dev, "Invalid audio format count for %s\n",
+					swidget->widget->name);
+				ret = num_sets;
+				goto err;
+			}
+
+			if (num_sets > 1) {
+				struct snd_sof_tuple *new_tuples;
+
+				num_tuples += token_list[object_token_list[i]].count * num_sets;
+				new_tuples = krealloc(swidget->tuples,
+						      sizeof(*new_tuples) * num_tuples, GFP_KERNEL);
+				if (!new_tuples) {
+					ret = -ENOMEM;
+					goto err;
+				}
+
+				swidget->tuples = new_tuples;
+			}
+			break;
+		default:
+			break;
 		}
 
 		/* copy one set of tuples per token ID into swidget->tuples */
 		ret = sof_copy_tuples(sdev, private->array, le32_to_cpu(private->size),
-				      object_token_list[i], 1, swidget->tuples,
+				      object_token_list[i], num_sets, swidget->tuples,
 				      num_tuples, &swidget->num_tuples);
 		if (ret < 0) {
 			dev_err(scomp->dev, "Failed parsing %s for widget %s err: %d\n",
@@ -1150,21 +1196,6 @@ static int sof_widget_parse_tokens(struct snd_soc_component *scomp, struct snd_s
 err:
 	kfree(swidget->tuples);
 	return ret;
-}
-
-static int sof_get_token_value(u32 token_id, struct snd_sof_tuple *tuples, int num_tuples)
-{
-	int i;
-
-	if (!tuples)
-		return -EINVAL;
-
-	for (i = 0; i < num_tuples; i++) {
-		if (tuples[i].token == token_id)
-			return tuples[i].value.v;
-	}
-
-	return -EINVAL;
 }
 
 /* external widget init - used for any driver specific init */
@@ -1269,6 +1300,9 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 		if (core >= 0)
 			swidget->core = core;
 	}
+
+	if (w->id == snd_soc_dapm_scheduler)
+		swidget->dynamic_pipeline_widget = 1;
 
 	/* check token parsing reply */
 	if (ret < 0) {
@@ -1674,7 +1708,7 @@ static int sof_link_load(struct snd_soc_component *scomp, int index, struct snd_
 	}
 
 	/* for DMIC, also parse all sets of DMIC PDM tokens based on active PDM count */
-	if (token_id == SOF_DMIC_TOKENS) {
+	if (token_id == SOF_DMIC_TOKENS && token_list[token_id].tokens) {
 		num_sets = sof_get_token_value(SOF_TKN_INTEL_DMIC_NUM_PDM_ACTIVE,
 					       slink->tuples, slink->num_tuples);
 
@@ -1777,28 +1811,15 @@ static int sof_route_load(struct snd_soc_component *scomp, int index,
 	    sink_swidget->id == snd_soc_dapm_output)
 		goto err;
 
-	/*
-	 * For virtual routes, both sink and source are not
-	 * buffer. Since only buffer linked to component is supported by
-	 * FW, others are reported as error, add check in route function,
-	 * do not send it to FW when both source and sink are not buffer
-	 */
-	if (source_swidget->id != snd_soc_dapm_buffer &&
-	    sink_swidget->id != snd_soc_dapm_buffer) {
-		dev_dbg(scomp->dev, "warning: neither Linked source component %s nor sink component %s is of buffer type, ignoring link\n",
-			route->source, route->sink);
-		goto err;
-	} else {
-		sroute->route = route;
-		dobj->private = sroute;
-		sroute->src_widget = source_swidget;
-		sroute->sink_widget = sink_swidget;
+	sroute->route = route;
+	dobj->private = sroute;
+	sroute->src_widget = source_swidget;
+	sroute->sink_widget = sink_swidget;
 
-		/* add route to route list */
-		list_add(&sroute->list, &sdev->route_list);
+	/* add route to route list */
+	list_add(&sroute->list, &sdev->route_list);
 
-		return 0;
-	}
+	return 0;
 
 err:
 	kfree(sroute);
