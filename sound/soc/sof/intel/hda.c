@@ -25,6 +25,7 @@
 #include <sound/intel-dsp-config.h>
 #include <sound/intel-nhlt.h>
 #include <sound/sof.h>
+#include <sound/sof/ext_manifest4.h>
 #include <sound/sof/xtensa.h>
 #include "../sof-audio.h"
 #include "../sof-pci-dev.h"
@@ -885,6 +886,11 @@ int hda_dsp_probe(struct snd_sof_dev *sdev)
 		ret = -EIO;
 		goto err;
 	}
+
+	if (chip->hw_ip_version == SOF_INTEL_CAVS_1_5)
+		sdev->man4_fw_hdr_offset = SOF_MAN4_FW_HDR_OFFSET_CAVS_1_5;
+	else
+		sdev->man4_fw_hdr_offset = SOF_MAN4_FW_HDR_OFFSET;
 
 	sdev->num_cores = chip->cores_num;
 
