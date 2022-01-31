@@ -573,6 +573,11 @@ struct snd_sof_dev {
 	/* to protect the ipc_rx_handler_list  and  dsp_state_handler_list list */
 	struct mutex client_event_handler_mutex;
 
+	/* FW module and manifest info. TODO: make this IPC4 specific */
+	int fw_module_num;
+	void *fw_modules;
+	u32 man4_fw_hdr_offset;
+
 	void *private;			/* core does not touch this */
 };
 
