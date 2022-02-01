@@ -62,10 +62,6 @@ irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 
 		spin_lock_irq(&sdev->ipc_lock);
 
-		/* handle immediate reply from DSP core */
-		hda_dsp_ipc_get_reply(sdev);
-		snd_sof_ipc_reply(sdev, msg);
-
 		cnl_ipc_dsp_done(sdev);
 
 		spin_unlock_irq(&sdev->ipc_lock);
@@ -105,13 +101,19 @@ irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 			/* TODO: This is hacky. How do we pass the header for IPC4? IPC3 reads it
 			 * from the mailbox, so no need to pass anything
 			 */
-			struct sof_ipc4_msg ipc4_reply;
+			struct sof_ipc4_msg data;
 
-			ipc4_reply.primary = msg;
-			ipc4_reply.extension = msg_ext;
-			sdev->ipc->msg.rx_data = &ipc4_reply;
+			data.primary = msg;
+			data.extension = msg_ext;
 
-			snd_sof_ipc_msgs_rx(sdev);
+			if (hipctdr & SOF_IPC4_GLB_MSG_DIR_MASK) {
+				sdev->ipc->msg.reply_data = &data;
+				snd_sof_ipc_get_reply(sdev);
+				snd_sof_ipc_reply(sdev, msg);
+			} else {
+				sdev->ipc->msg.rx_data = &data;
+				snd_sof_ipc_msgs_rx(sdev);
+			}
 
 			sdev->ipc->msg.rx_data = NULL;
 		}
