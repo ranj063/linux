@@ -186,12 +186,11 @@ struct snd_sof_ipc *snd_sof_ipc_init(struct snd_sof_dev *sdev)
 		dev_err(sdev->dev, "Missing IPC topology ops\n");
 		return NULL;
 	}
-#if 0
+
 	if (!ops->pcm) {
 		dev_err(sdev->dev, "Missing IPC PCM ops\n");
 		return NULL;
 	}
-#endif
 
 	ipc->ops = ops;
 
