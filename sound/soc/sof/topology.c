@@ -475,10 +475,8 @@ static int sof_copy_tuples(struct snd_sof_dev *sdev, struct snd_soc_tplg_vendor_
 	tokens = token_list[token_id].tokens;
 	num_tokens = token_list[token_id].count;
 
-	if (!tokens) {
-		dev_err(sdev->dev, "No token array defined for token ID: %d\n", token_id);
-		return -EINVAL;
-	}
+	if (!tokens)
+		return 0;
 
 	/* check if there's space in the tuples array for new tokens */
 	if (*num_copied_tuples >= tuples_size) {
