@@ -8,6 +8,7 @@
 //
 #include <uapi/sound/sof/tokens.h>
 #include <sound/pcm_params.h>
+#include <sound/sof/ext_manifest4.h>
 #include "sof-priv.h"
 #include "sof-audio.h"
 #include "ipc4-ops.h"
@@ -121,10 +122,18 @@ static const struct sof_topology_token dai_link_tokens[] = {
 		offsetof(struct sof_ipc_dai_config, dai_index)},
 };
 
+/* Component extended tokens */
+static const struct sof_topology_token comp_ext_tokens[] = {
+	{SOF_TKN_COMP_UUID, SND_SOC_TPLG_TUPLE_TYPE_UUID, get_token_uuid,
+		offsetof(struct snd_sof_widget, uuid)},
+};
+
 static const struct sof_token_info ipc4_token_list[SOF_TOKEN_COUNT] = {
 	[SOF_DAI_TOKENS] = {"DAI tokens", dai_tokens, ARRAY_SIZE(dai_tokens)},
 	[SOF_DAI_LINK_TOKENS] = {"DAI link tokens", dai_link_tokens, ARRAY_SIZE(dai_link_tokens)},
 	[SOF_SCHED_TOKENS] = {"Scheduler tokens", ipc4_sched_tokens, ARRAY_SIZE(ipc4_sched_tokens)},
+	[SOF_COMP_EXT_TOKENS] = {"Comp extended tokens", comp_ext_tokens,
+				 ARRAY_SIZE(comp_ext_tokens)},
 	[SOF_GAIN_TOKENS] = {"Gain tokens", gain_tokens, ARRAY_SIZE(gain_tokens)},
 	[SOF_IPC4_COMP_TOKENS] = {"IPC4 Component tokens", ipc4_comp_tokens, ARRAY_SIZE(ipc4_comp_tokens)},
 	[SOF_IPC4_MIXER_TOKENS] = {"IPC4 Mixer tokens", ipc4_mixer_tokens, ARRAY_SIZE(ipc4_mixer_tokens)},
@@ -252,6 +261,29 @@ static void sof_ipc4_widget_free_comp(struct snd_sof_widget *swidget)
 	kfree(swidget->private);
 }
 
+static int sof_ipc4_widget_set_module_info(struct snd_soc_component *scomp,
+					   struct snd_sof_widget *swidget)
+{
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct sof_ipc4_fw_module *fw_modules = sdev->fw_modules;
+	int i;
+
+	/* set module info */
+	if (fw_modules) {
+		for (i = 0; i < sdev->fw_module_num; i++) {
+			if (!memcmp(swidget->uuid, fw_modules[i].man4_module_entry.uuid,
+				    UUID_SIZE)) {
+				swidget->module_info = &fw_modules[i];
+				return 0;
+			}
+		}
+	}
+
+	dev_err(sdev->dev, "failed to find module info for widget %s with UUID %pUL\n",
+		swidget->widget->name, swidget->uuid);
+	return -EINVAL;
+}
+
 static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 {
 	struct snd_soc_component *scomp = swidget->scomp;
@@ -295,7 +327,8 @@ static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 
-	return 0;
+	return sof_ipc4_widget_set_module_info(scomp, swidget);
+
 err:
 	kfree(ipc4_copier);
 	return ret;
@@ -349,7 +382,7 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 		ipc4_copier->copier.base_config.cpc);
 
 	dai->private = ipc4_copier;
-	return ret;
+	return sof_ipc4_widget_set_module_info(scomp, swidget);
 }
 
 static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
@@ -414,7 +447,7 @@ static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 		swidget->widget->name, gain->data.curve_type, gain->data.curve_duration,
 		gain->data.init_val, gain->base_config.cpc);
 
-	return 0;
+	return sof_ipc4_widget_set_module_info(scomp, swidget);
 err:
 	kfree(gain);
 	return ret;
@@ -446,7 +479,7 @@ static int sof_ipc4_widget_setup_comp_mixer(struct snd_sof_widget *swidget)
 
 	dev_dbg(scomp->dev, "mixer type %d", mixer->type);
 
-	return 0;
+	return sof_ipc4_widget_set_module_info(scomp, swidget);
 err:
 	kfree(mixer);
 	return ret;
@@ -493,6 +526,7 @@ static enum sof_tokens host_token_list[] = {
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_COMP_EXT_TOKENS,
 };
 
 static enum sof_tokens mixer_token_list[] = {
@@ -502,6 +536,7 @@ static enum sof_tokens mixer_token_list[] = {
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_COMP_EXT_TOKENS,
 };
 
 static enum sof_tokens pipeline_token_list[] = {
@@ -520,6 +555,7 @@ static enum sof_tokens pga_token_list[] = {
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_COMP_EXT_TOKENS,
 };
 
 static enum sof_tokens dai_token_list[] = {
@@ -529,6 +565,7 @@ static enum sof_tokens dai_token_list[] = {
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_COMP_EXT_TOKENS,
 };
 
 static const struct ipc_tplg_widget_ops tplg_ipc4_widget_ops[SND_SOC_DAPM_TYPE_COUNT] = {

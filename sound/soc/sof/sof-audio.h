@@ -323,6 +323,7 @@ struct snd_sof_widget {
 	struct snd_soc_dapm_widget *widget;
 	struct list_head list;	/* list in sdev widget list */
 	struct snd_sof_widget *pipe_widget;
+	struct sof_ipc4_fw_module *module_info;
 
 	u8 uuid[SOF_UUID_SIZE];
 
