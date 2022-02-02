@@ -19,7 +19,7 @@ static size_t sof_ipc4_fw_parse_ext_man(struct snd_sof_dev *sdev)
 	struct sof_man4_fw_binary_header *fw_header;
 	const struct firmware *fw = plat_data->fw;
 	struct sof_man4_module_config *fm_config;
-	struct sof_ipc4_fw_modules *module_entry;
+	struct sof_ipc4_fw_module *module_entry;
 	struct sof_ext_manifest4_hdr *hdr;
 	struct sof_man4_module *fm_entry;
 	ssize_t remaining;

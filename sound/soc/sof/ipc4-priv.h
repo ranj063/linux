@@ -11,7 +11,7 @@
 
 #include <sound/sof/ext_manifest4.h>
 
-struct sof_ipc4_fw_modules {
+struct sof_ipc4_fw_module {
 	struct sof_man4_module man4_module_entry;
 	struct ida m_ida;
 	u32 bss_size;
