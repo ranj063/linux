@@ -168,6 +168,7 @@ static int hda_link_dai_widget_update(struct sof_intel_hda_stream *hda_stream,
 {
 	struct snd_sof_dai_config_data data;
 
+	data.type = SOF_DAI_INTEL_HDA;
 	data.dai_data = channel;
 
 	/* set up/free DAI widget and send DAI_CONFIG IPC */

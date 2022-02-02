@@ -14,11 +14,15 @@
 
 static void sof_reset_route_setup_status(struct snd_sof_dev *sdev, struct snd_sof_widget *widget)
 {
+	const struct ipc_tplg_ops *tplg_ops = sdev->ipc->ops->tplg;
 	struct snd_sof_route *sroute;
 
 	list_for_each_entry(sroute, &sdev->route_list, list)
-		if (sroute->src_widget == widget || sroute->sink_widget == widget)
+		if (sroute->src_widget == widget || sroute->sink_widget == widget) {
+			if (tplg_ops->route_free)
+				tplg_ops->route_free(sdev, sroute);
 			sroute->setup = false;
+		}
 }
 
 int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
@@ -40,6 +44,9 @@ int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 		dai->configured = false;
 	}
 
+	/* first reset route setup status for all routes that contain this widget */
+	sof_reset_route_setup_status(sdev, swidget);
+
 	/* continue to disable core even if IPC fails */
 	if (tplg_ops->widget_free)
 		err = tplg_ops->widget_free(sdev, swidget);
@@ -56,8 +63,6 @@ int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 			err = ret;
 	}
 
-	/* reset route setup status for all routes that contain this widget */
-	sof_reset_route_setup_status(sdev, swidget);
 	swidget->complete = 0;
 
 	/*
@@ -139,7 +144,7 @@ int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 	}
 
 	/* restore kcontrols for widget */
-	if (tplg_ops->control->widget_kcontrol_setup) {
+	if (tplg_ops->control && tplg_ops->control->widget_kcontrol_setup) {
 		ret = tplg_ops->control->widget_kcontrol_setup(sdev, swidget);
 		if (ret < 0)
 			goto widget_free;
@@ -250,6 +255,36 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 					if (ret < 0)
 						return ret;
 				}
+		}
+	}
+
+	return 0;
+}
+
+int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
+			    struct snd_sof_platform_stream_params *params)
+{
+	const struct ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
+	const struct ipc_tplg_widget_ops *widget_ops = ipc_tplg_ops->widget;
+	struct snd_soc_dapm_widget_list *list = spcm->stream[params->direction].list;
+	struct snd_soc_dapm_widget *widget;
+	int ret, i;
+
+	/* nothing to prepare */
+	if (!list)
+		return 0;
+
+	/* prepare widgets in the list */
+	for_each_dapm_widgets(list, i, widget) {
+		struct snd_sof_widget *swidget = widget->dobj.private;
+
+		if (!swidget)
+			continue;
+
+		if (widget_ops[widget->id].prepare) {
+			ret = widget_ops[widget->id].prepare(swidget, params);
+			if (ret < 0)
+				return ret;
 		}
 	}
 

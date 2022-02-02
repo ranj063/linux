@@ -119,6 +119,10 @@ struct snd_sof_platform_stream_params {
 	bool use_phy_address;
 	u32 phy_addr;
 	bool no_ipc_position;
+	u32 rate;
+	u16 sample_valid_bytes;
+	u16 channels;
+	int direction;
 };
 
 /*

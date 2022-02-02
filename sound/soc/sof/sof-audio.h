@@ -47,6 +47,7 @@ struct snd_sof_control;
 struct snd_sof_dai;
 
 struct snd_sof_dai_config_data {
+	int type;
 	int dai_index;
 	int dai_data; /* contains DAI-specific information */
 };
@@ -102,6 +103,7 @@ struct ipc_tplg_control_ops {
  * @token_list: List of token ID's that should be parsed for the widget
  * @token_list_size: number of elements in token_list
  * @bind_event: Function pointer for binding events to the widget
+ * @prepare: Function pointer for preparing widget for set up
  * @set_up_all_pipelines: Function pointer for setting up all topology pipelines
  * @tear_down_all_pipelines: Function pointer for tearing down all topology pipelines
  */
@@ -112,6 +114,8 @@ struct ipc_tplg_widget_ops {
 	int token_list_size;
 	int (*bind_event)(struct snd_soc_component *scomp, struct snd_sof_widget *swidget,
 			  u16 event_type);
+	int (*prepare)(struct snd_sof_widget *swidget,
+		       struct snd_sof_platform_stream_params *params);
 };
 
 /**
@@ -121,6 +125,7 @@ struct ipc_tplg_widget_ops {
  *	    initialized to 0.
  * @control: Pointer to the IPC-specific ops for topology kcontrol IO
  * @route_setup: Function pointer for setting up pipeline connections
+ * @route_free: Function pointer for freeing pipeline connections
  * @token_list: List of all tokens supported by the IPC version. The size of the token_list
  *		array should be SOF_TOKEN_COUNT. The unused elements in the array will be
  *		initialized to 0.
@@ -135,6 +140,7 @@ struct ipc_tplg_ops {
 	const struct ipc_tplg_widget_ops *widget;
 	const struct ipc_tplg_control_ops *control;
 	int (*route_setup)(struct snd_sof_dev *sdev, struct snd_sof_route *sroute);
+	void (*route_free)(struct snd_sof_dev *sdev, struct snd_sof_route *sroute);
 	const struct sof_token_info *token_list;
 	int (*control_setup)(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol);
 	int (*control_free)(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol);
@@ -191,9 +197,11 @@ enum sof_tokens {
 	SOF_IPC4_MIXER_TOKENS,
 	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
+	SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS,
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_COPIER_FORMAT_TOKENS,
 
 	/* this should be the last */
 	SOF_TOKEN_COUNT,
@@ -309,6 +317,7 @@ struct snd_sof_widget {
 	int use_count; /* use_count will be protected by the PCM mutex held by the core */
 	int core;
 	int id;
+	int instance_id; /* dynamically set when the widget gets set up in the FW */
 
 	/*
 	 * Flag indicating if the widget should be set up dynamically when a PCM is opened.
@@ -464,6 +473,8 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 
 /* PCM */
 int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, int dir);
+int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
+			    struct snd_sof_platform_stream_params *params);
 int sof_widget_list_free(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, int dir);
 int sof_pcm_dsp_pcm_free(struct snd_pcm_substream *substream, struct snd_sof_dev *sdev,
 			 struct snd_sof_pcm *spcm);
@@ -477,7 +488,5 @@ int get_token_uuid(void *elem, void *object, u32 offset);
 int sof_update_ipc_object(struct snd_soc_component *scomp, void *object, enum sof_tokens token_id,
 			  struct snd_sof_tuple *tuples, int num_tuples,
 			  size_t object_size, int token_instance_num);
-int sof_pcm_setup_connected_widgets(struct snd_sof_dev *sdev, struct snd_soc_pcm_runtime *rtd,
-				    struct snd_sof_pcm *spcm, int dir);
 u32 vol_compute_gain(u32 value, int *tlv);
 #endif

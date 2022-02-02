@@ -31,6 +31,11 @@ static const struct sof_topology_token ipc4_sched_tokens[] = {
 		offsetof(struct sof_ipc4_pipeline, lp_mode)}
 };
 
+static const struct sof_topology_token pipeline_tokens[] = {
+	{SOF_TKN_SCHED_DYNAMIC_PIPELINE, SND_SOC_TPLG_TUPLE_TYPE_BOOL, get_token_u16,
+		offsetof(struct snd_sof_widget, dynamic_pipeline_widget)},
+};
+
 /* gain */
 static const struct sof_topology_token gain_tokens[] = {
 	{SOF_TKN_GAIN_RAMP_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD,
@@ -46,12 +51,15 @@ static const struct sof_topology_token gain_tokens[] = {
 static const struct sof_topology_token ipc4_comp_tokens[] = {
 	{SOF_TKN_COMP_CPC, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		offsetof(struct sof_ipc4_base_module_cfg, cpc)},
+	{SOF_TKN_COMP_IS_PAGES, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc4_base_module_cfg, is_pages)},
+};
+
+static const struct sof_topology_token ipc4_audio_format_buffer_size_tokens[] = {
 	{SOF_TKN_CAVS_AUDIO_FORMAT_IBS, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		offsetof(struct sof_ipc4_base_module_cfg, ibs)},
 	{SOF_TKN_CAVS_AUDIO_FORMAT_OBS, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		offsetof(struct sof_ipc4_base_module_cfg, obs)},
-	{SOF_TKN_COMP_IS_PAGES, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc4_base_module_cfg, is_pages)},
 };
 
 static const struct sof_topology_token ipc4_mixer_tokens[] = {
@@ -90,13 +98,16 @@ static const struct sof_topology_token ipc4_out_audio_format_tokens[] = {
 };
 
 static const struct sof_topology_token ipc4_copier_gateway_cfg_tokens[] = {
-	{SOF_TKN_CAVS_AUDIO_FORMAT_DMA_BUFFER_SIZE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_copier_gateway_cfg, dma_buffer_size)},
+	{SOF_TKN_CAVS_AUDIO_FORMAT_DMA_BUFFER_SIZE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32, 0},
 };
 
 static const struct sof_topology_token ipc4_copier_tokens[] = {
-	{SOF_TKN_INTEL_COPIER_NODE_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		0},
+	{SOF_TKN_INTEL_COPIER_NODE_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32, 0},
+};
+
+static const struct sof_topology_token ipc4_copier_format_tokens[] = {
+	{SOF_TKN_COMP_FORMAT, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
+		offsetof(struct sof_ipc4_copier, frame_fmt)},
 };
 
 static const struct sof_topology_token ipc4_audio_fmt_num_tokens[] = {
@@ -131,17 +142,31 @@ static const struct sof_topology_token comp_ext_tokens[] = {
 static const struct sof_token_info ipc4_token_list[SOF_TOKEN_COUNT] = {
 	[SOF_DAI_TOKENS] = {"DAI tokens", dai_tokens, ARRAY_SIZE(dai_tokens)},
 	[SOF_DAI_LINK_TOKENS] = {"DAI link tokens", dai_link_tokens, ARRAY_SIZE(dai_link_tokens)},
-	[SOF_SCHED_TOKENS] = {"Scheduler tokens", ipc4_sched_tokens, ARRAY_SIZE(ipc4_sched_tokens)},
+	[SOF_PIPELINE_TOKENS] = {"Pipeline tokens", pipeline_tokens, ARRAY_SIZE(pipeline_tokens)},
+	[SOF_SCHED_TOKENS] = {"Scheduler tokens", ipc4_sched_tokens,
+		ARRAY_SIZE(ipc4_sched_tokens)},
 	[SOF_COMP_EXT_TOKENS] = {"Comp extended tokens", comp_ext_tokens,
-				 ARRAY_SIZE(comp_ext_tokens)},
+		ARRAY_SIZE(comp_ext_tokens)},
 	[SOF_GAIN_TOKENS] = {"Gain tokens", gain_tokens, ARRAY_SIZE(gain_tokens)},
-	[SOF_IPC4_COMP_TOKENS] = {"IPC4 Component tokens", ipc4_comp_tokens, ARRAY_SIZE(ipc4_comp_tokens)},
-	[SOF_IPC4_MIXER_TOKENS] = {"IPC4 Mixer tokens", ipc4_mixer_tokens, ARRAY_SIZE(ipc4_mixer_tokens)},
-	[SOF_IPC4_IN_AUDIO_FORMAT_TOKENS] = {"IPC4 Input Audio format tokens", ipc4_in_audio_format_tokens, ARRAY_SIZE(ipc4_in_audio_format_tokens)},
-	[SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS] = {"IPC4 Output Audio format tokens", ipc4_out_audio_format_tokens, ARRAY_SIZE(ipc4_out_audio_format_tokens)},
-	[SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS] = {"IPC4 Cpoier gateway config tokens", ipc4_copier_gateway_cfg_tokens, ARRAY_SIZE(ipc4_copier_gateway_cfg_tokens)},
-	[SOF_IPC4_COPIER_TOKENS] = {"IPC4 Cpoier tokens", ipc4_copier_tokens, ARRAY_SIZE(ipc4_copier_tokens)},
-	[SOF_IPC4_AUDIO_FMT_NUM_TOKENS] = {"IPC4 Audio format number tokens", ipc4_audio_fmt_num_tokens, ARRAY_SIZE(ipc4_audio_fmt_num_tokens)},
+	[SOF_IPC4_COMP_TOKENS] = {"IPC4 Component tokens",
+		ipc4_comp_tokens, ARRAY_SIZE(ipc4_comp_tokens)},
+	[SOF_IPC4_MIXER_TOKENS] = {"IPC4 Mixer tokens", ipc4_mixer_tokens,
+		ARRAY_SIZE(ipc4_mixer_tokens)},
+	[SOF_IPC4_IN_AUDIO_FORMAT_TOKENS] = {"IPC4 Input Audio format tokens",
+		ipc4_in_audio_format_tokens, ARRAY_SIZE(ipc4_in_audio_format_tokens)},
+	[SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS] = {"IPC4 Output Audio format tokens",
+		ipc4_out_audio_format_tokens, ARRAY_SIZE(ipc4_out_audio_format_tokens)},
+	[SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS] = {"IPC4 Audio format buffer size tokens",
+		ipc4_audio_format_buffer_size_tokens,
+		ARRAY_SIZE(ipc4_audio_format_buffer_size_tokens)},
+	[SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS] = {"IPC4 Cpoier gateway config tokens",
+		ipc4_copier_gateway_cfg_tokens, ARRAY_SIZE(ipc4_copier_gateway_cfg_tokens)},
+	[SOF_IPC4_COPIER_TOKENS] = {"IPC4 Cpoier tokens", ipc4_copier_tokens,
+		ARRAY_SIZE(ipc4_copier_tokens)},
+	[SOF_IPC4_COPIER_FORMAT_TOKENS] = {"IPC4 Cpoier tokens", ipc4_copier_format_tokens,
+		ARRAY_SIZE(ipc4_copier_format_tokens)},
+	[SOF_IPC4_AUDIO_FMT_NUM_TOKENS] = {"IPC4 Audio format number tokens",
+		ipc4_audio_fmt_num_tokens, ARRAY_SIZE(ipc4_audio_fmt_num_tokens)},
 };
 
 void sof_ipc4_dbg_audio_format(struct device *dev, struct sof_ipc4_audio_format *format,
@@ -182,7 +207,7 @@ static int sof_ipc4_get_audio_fmt(struct snd_soc_component *scomp,
 	struct sof_ipc4_base_module_cfg *base_config;
 	struct sof_ipc4_audio_format *out_format;
 	int audio_fmt_num = 0;
-	int ret;
+	int ret, i;
 
 	ret = sof_update_ipc_object(scomp, &audio_fmt_num,
 				    SOF_IPC4_AUDIO_FMT_NUM_TOKENS, swidget->tuples,
@@ -193,18 +218,37 @@ static int sof_ipc4_get_audio_fmt(struct snd_soc_component *scomp,
 	}
 	available_fmt->audio_fmt_num = audio_fmt_num;
 
+	dev_dbg(scomp->dev, "num audio formats %d\n", available_fmt->audio_fmt_num);
+
 	base_config = kcalloc(available_fmt->audio_fmt_num, sizeof(*base_config), GFP_KERNEL);
 	if (!base_config)
 		return -ENOMEM;
 
+	/* set cpc and is_pages for all base_cfg */
+	for (i = 0; i < available_fmt->audio_fmt_num; i++) {
+		ret = sof_update_ipc_object(scomp, &base_config[i],
+					    SOF_IPC4_COMP_TOKENS, swidget->tuples,
+					    swidget->num_tuples, sizeof(*base_config), 1);
+		if (ret != 0) {
+			dev_err(scomp->dev, "parse comp tokens failed %d\n", ret);
+			goto err_in;
+		}
+	}
+
+	/* copy the ibs/obs for each base_cfg */
 	ret = sof_update_ipc_object(scomp, base_config,
-				    SOF_IPC4_COMP_TOKENS, swidget->tuples,
+				    SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS, swidget->tuples,
 				    swidget->num_tuples, sizeof(*base_config),
 				    available_fmt->audio_fmt_num);
 	if (ret != 0) {
-		dev_err(scomp->dev, "parse base_config tokens failed %d\n", ret);
+		dev_err(scomp->dev, "parse buffer size tokens failed %d\n", ret);
 		goto err_in;
 	}
+
+	for (i = 0; i < available_fmt->audio_fmt_num; i++)
+		dev_dbg(scomp->dev, "%d: ibs: %d obs: %d cpc: %d is_pages: %d\n", i,
+			base_config[i].ibs, base_config[i].obs,
+			base_config[i].cpc, base_config[i].is_pages);
 
 	ret = sof_update_ipc_object(scomp, &base_config->audio_fmt,
 				    SOF_IPC4_IN_AUDIO_FORMAT_TOKENS, swidget->tuples,
@@ -215,6 +259,7 @@ static int sof_ipc4_get_audio_fmt(struct snd_soc_component *scomp,
 		goto err_in;
 	}
 
+	dev_dbg(scomp->dev, "Input audio formats for %s\n", swidget->widget->name);
 	sof_ipc4_dbg_audio_format(scomp->dev, &base_config->audio_fmt,
 				  sizeof(*base_config),
 				  available_fmt->audio_fmt_num,
@@ -242,6 +287,7 @@ static int sof_ipc4_get_audio_fmt(struct snd_soc_component *scomp,
 	}
 
 	available_fmt->out_audio_fmt = out_format;
+	dev_dbg(scomp->dev, "Output audio formats for %s\n", swidget->widget->name);
 	sof_ipc4_dbg_audio_format(scomp->dev, out_format, sizeof(*out_format),
 				  available_fmt->audio_fmt_num,
 				  swidget->widget->name, __func__);
@@ -286,103 +332,170 @@ static int sof_ipc4_widget_set_module_info(struct snd_soc_component *scomp,
 
 static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 {
+	struct sof_ipc4_available_audio_format *available_fmt;
 	struct snd_soc_component *scomp = swidget->scomp;
+	struct sof_ipc4_fw_module *fw_module;
 	struct sof_ipc4_copier *ipc4_copier;
 	int node_type = 0;
-	int ret;
+	int ret, i;
 
 	ipc4_copier = kzalloc(sizeof(*ipc4_copier), GFP_KERNEL);
 	if (!ipc4_copier)
 		return -ENOMEM;
 
 	swidget->private = ipc4_copier;
+	available_fmt = &ipc4_copier->available_fmt;
 
-	ret = sof_ipc4_get_audio_fmt(scomp, swidget, &ipc4_copier->available_fmt, true);
+	dev_dbg(scomp->dev, "Updating IPC structure for %s\n", swidget->widget->name);
+
+	ret = sof_ipc4_get_audio_fmt(scomp, swidget, available_fmt, true);
 	if (ret != 0)
-		goto err;
+		goto free_copier;
 
-	ret = sof_update_ipc_object(scomp, &ipc4_copier->copier.gtw_cfg,
+	available_fmt->dma_buffer_size = kcalloc(available_fmt->audio_fmt_num, sizeof(u32),
+						 GFP_KERNEL);
+	if (!available_fmt->dma_buffer_size) {
+		ret = -ENOMEM;
+		goto free_copier;
+	}
+
+	ret = sof_update_ipc_object(scomp, available_fmt->dma_buffer_size,
 				    SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS, swidget->tuples,
-				    swidget->num_tuples, sizeof(ipc4_copier->copier.gtw_cfg), 1);
-
-	if (ret != 0 || !ipc4_copier->copier.gtw_cfg.dma_buffer_size) {
-		dev_err(scomp->dev, "Invalid host dma_buffer_size %d\n",
-			ipc4_copier->copier.gtw_cfg.dma_buffer_size);
+				    swidget->num_tuples, sizeof(u32),
+				    available_fmt->audio_fmt_num);
+	if (ret != 0) {
+		dev_err(scomp->dev, "Failed to parse dma buffer size in audio format for %s\n",
+			swidget->widget->name);
 		goto err;
 	}
-	dev_dbg(scomp->dev, "host %s gtw_cfg dma_buffer_size %u\n",
-		swidget->widget->name, ipc4_copier->copier.gtw_cfg.dma_buffer_size);
+
+	for (i = 0; i < available_fmt->audio_fmt_num; i++)
+		dev_dbg(scomp->dev, "%d: dma buffer size: %u\n", i,
+			available_fmt->dma_buffer_size[i]);
 
 	ret = sof_update_ipc_object(scomp, &node_type,
 				    SOF_IPC4_COPIER_TOKENS, swidget->tuples,
 				    swidget->num_tuples, sizeof(node_type), 1);
 
 	if (ret != 0) {
-		dev_err(scomp->dev, "parse host copier_node tokens failed %d\n",
+		dev_err(scomp->dev, "parse host copier node type token failed %d\n",
 			ret);
 		goto err;
 	}
-	dev_dbg(scomp->dev, "host %s node_type %u\n",
-		swidget->widget->name, node_type);
+	dev_dbg(scomp->dev, "host copier %s node_type %u\n", swidget->widget->name, node_type);
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 
-	return sof_ipc4_widget_set_module_info(scomp, swidget);
+	ret = sof_ipc4_widget_set_module_info(scomp, swidget);
+	if (ret < 0)
+		goto err;
+
+	fw_module = swidget->module_info;
+
+	ipc4_copier->msg.primary = fw_module->man4_module_entry.id;
+	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
+	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	ipc4_copier->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
+	ipc4_copier->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
+
+	return 0;
 
 err:
+	kfree(available_fmt->dma_buffer_size);
+free_copier:
 	kfree(ipc4_copier);
 	return ret;
 }
 
 static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 {
+	struct sof_ipc4_available_audio_format *available_fmt;
 	struct snd_soc_component *scomp = swidget->scomp;
 	struct snd_sof_dai *dai = swidget->private;
+	struct sof_ipc4_fw_module *fw_module;
 	struct sof_ipc4_copier *ipc4_copier;
 	int node_type = 0;
-	int ret;
+	int ret, i;
 
 	ipc4_copier = kzalloc(sizeof(*ipc4_copier), GFP_KERNEL);
 	if (!ipc4_copier)
 		return -ENOMEM;
 
-	ret = sof_ipc4_get_audio_fmt(scomp, swidget, &ipc4_copier->available_fmt, true);
+	available_fmt = &ipc4_copier->available_fmt;
+
+	dev_dbg(scomp->dev, "Updating IPC structures for %s\n", swidget->widget->name);
+
+	ret = sof_ipc4_get_audio_fmt(scomp, swidget, available_fmt, true);
 	if (ret != 0)
-		return ret;
+		goto free_copier;
 
-	ret = sof_update_ipc_object(scomp, &ipc4_copier->copier.gtw_cfg,
-				    SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS, swidget->tuples,
-				    swidget->num_tuples, sizeof(ipc4_copier->copier.gtw_cfg), 1);
-
-	if (ret != 0 || !ipc4_copier->copier.gtw_cfg.dma_buffer_size) {
-		dev_err(scomp->dev, "Invalid dai dma_buffer_size %d\n",
-			ipc4_copier->copier.gtw_cfg.dma_buffer_size);
-		return -EINVAL;
+	available_fmt->dma_buffer_size = kcalloc(available_fmt->audio_fmt_num, sizeof(u32),
+						 GFP_KERNEL);
+	if (!available_fmt->dma_buffer_size) {
+		ret = -ENOMEM;
+		goto free_copier;
 	}
-	dev_dbg(scomp->dev, "dai %s gtw_cfg dma_buffer_size %u\n",
-		swidget->widget->name, ipc4_copier->copier.gtw_cfg.dma_buffer_size);
+
+	ret = sof_update_ipc_object(scomp, available_fmt->dma_buffer_size,
+				    SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS, swidget->tuples,
+				    swidget->num_tuples, sizeof(u32),
+				    available_fmt->audio_fmt_num);
+	if (ret != 0) {
+		dev_err(scomp->dev, "Failed to parse dma buffer size in audio format for %s\n",
+			swidget->widget->name);
+		goto err;
+	}
+
+	for (i = 0; i < available_fmt->audio_fmt_num; i++)
+		dev_dbg(scomp->dev, "%d: dma buffer size: %u\n", i,
+			available_fmt->dma_buffer_size[i]);
 
 	ret = sof_update_ipc_object(scomp, &node_type,
 				    SOF_IPC4_COPIER_TOKENS, swidget->tuples,
 				    swidget->num_tuples, sizeof(node_type), 1);
-
 	if (ret != 0) {
-		dev_err(scomp->dev, "parse dai copier_node tokens failed %d\n",
-			ret);
-		return ret;
+		dev_err(scomp->dev, "parse dai copier node token failed %d\n", ret);
+		goto err;
 	}
-	dev_dbg(scomp->dev, "dai %s node_type %u\n",
-		swidget->widget->name, node_type);
+
+	ret = sof_update_ipc_object(scomp, ipc4_copier,
+				    SOF_IPC4_COPIER_FORMAT_TOKENS, swidget->tuples,
+				    swidget->num_tuples, sizeof(*ipc4_copier), 1);
+	if (ret != 0) {
+		dev_err(scomp->dev, "parse dai copier format token failed %d\n", ret);
+		goto err;
+	}
+
+	dev_dbg(scomp->dev, "dai %s node_type %u format %d\n", swidget->widget->name, node_type,
+		ipc4_copier->frame_fmt);
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 
 	dai->scomp = scomp;
 
-	dev_dbg(scomp->dev, "dai %s cpc %d\n", swidget->widget->name,
-		ipc4_copier->copier.base_config.cpc);
-
 	dai->private = ipc4_copier;
-	return sof_ipc4_widget_set_module_info(scomp, swidget);
+	ret = sof_ipc4_widget_set_module_info(scomp, swidget);
+	if (ret < 0)
+		goto err;
+
+	fw_module = swidget->module_info;
+
+	ipc4_copier->msg.primary = fw_module->man4_module_entry.id;
+	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
+	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	ipc4_copier->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
+	ipc4_copier->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
+
+	return 0;
+err:
+	kfree(available_fmt->dma_buffer_size);
+free_copier:
+	kfree(ipc4_copier);
+	return ret;
 }
 
 static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
@@ -411,6 +524,14 @@ static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
 		pipeline->priority, pipeline->lp_mode);
 
 	swidget->private = pipeline;
+
+	pipeline->msg.primary = SOF_IPC4_GLB_PIPE_PRIORITY(pipeline->priority);
+	pipeline->msg.primary |= SOF_IPC4_GLB_PIPE_INSTANCE_ID(swidget->pipeline_id);
+	pipeline->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_GLB_CREATE_PIPELINE);
+	pipeline->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	pipeline->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_FW_GEN_MSG);
+
+	pipeline->msg.extension = pipeline->lp_mode;
 
 	return 0;
 }
@@ -511,84 +632,559 @@ static void sof_ipc4_widget_free_comp_dai(struct snd_sof_widget *swidget)
 
 static int sof_ipc4_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 {
-	/* TODO: sof_ipc4_delete_pipeline? */
+	struct sof_ipc4_fw_module *fw_module = swidget->module_info;
+	int ret;
+
+	switch (swidget->id) {
+	case snd_soc_dapm_scheduler:
+	{
+		struct sof_ipc4_pipeline *pipeline = swidget->private;
+		struct sof_ipc4_msg msg = {{ 0 }};
+		u32 header;
+
+		header = SOF_IPC4_GLB_PIPE_INSTANCE_ID(swidget->pipeline_id);
+		header |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_GLB_DELETE_PIPELINE);
+		header |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+		header |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_FW_GEN_MSG);
+
+		msg.primary = header;
+
+		ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
+		if (ret < 0)
+			dev_err(sdev->dev, "failed to delete pipeline %d", swidget->pipeline_id);
+
+		pipeline->mem_usage = 0;
+		break;
+	}
+	default:
+		ida_free(&fw_module->m_ida, swidget->instance_id);
+		break;
+	}
+
 	swidget->complete = 0;
-	swidget->use_count--;
+	dev_dbg(sdev->dev, "widget %s instance %d freed\n", swidget->widget->name,
+		swidget->instance_id);
+
 	return 0;
+}
+
+static void
+sof_ipc4_update_pipeline_mem_usage(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+				   struct sof_ipc4_base_module_cfg *base_config)
+{
+	struct sof_ipc4_fw_module *fw_module = swidget->module_info;
+	struct snd_sof_widget *pipe_widget;
+	struct sof_ipc4_pipeline *pipeline;
+	int task_mem, queue_mem;
+	int ibs, bss, total;
+
+	ibs = base_config->ibs;
+	bss = base_config->is_pages;
+
+	task_mem = SOF_IPC4_PIPELINE_OBJECT_SIZE;
+	task_mem += SOF_IPC4_MODULE_INSTANCE_LIST_ITEM_SIZE + bss;
+
+	if (fw_module->man4_module_entry.type & SOF_IPC4_MODULE_LL) {
+		task_mem += SOF_IPC4_FW_ROUNDUP(SOF_IPC4_LL_TASK_OBJECT_SIZE);
+		task_mem += SOF_IPC4_FW_MAX_QUEUE_COUNT * SOF_IPC4_MODULE_INSTANCE_LIST_ITEM_SIZE;
+		task_mem += SOF_IPC4_LL_TASK_LIST_ITEM_SIZE;
+	} else {
+		task_mem += SOF_IPC4_FW_ROUNDUP(SOF_IPC4_DP_TASK_OBJECT_SIZE);
+		task_mem += SOF_IPC4_DP_TASK_LIST_SIZE;
+	}
+
+	ibs = SOF_IPC4_FW_ROUNDUP(ibs);
+	queue_mem = SOF_IPC4_FW_MAX_QUEUE_COUNT * (SOF_IPC4_DATA_QUEUE_OBJECT_SIZE +  ibs);
+
+	total = SOF_IPC4_FW_PAGE(task_mem + queue_mem);
+
+	if (total > SOF_IPC4_FW_MAX_PAGE_COUNT) {
+		dev_info(sdev->dev, "task memory usage %d, queue memory usage %d",
+			 task_mem, queue_mem);
+		total = SOF_IPC4_FW_MAX_PAGE_COUNT;
+	}
+
+	pipe_widget = swidget->pipe_widget;
+	pipeline = pipe_widget->private;
+	pipeline->mem_usage += total;
+}
+
+static int sof_ipc4_widget_assign_instance_id(struct snd_sof_dev *sdev,
+					      struct snd_sof_widget *swidget)
+{
+	struct sof_ipc4_fw_module *fw_module = swidget->module_info;
+	int max_instances = fw_module->man4_module_entry.instance_max_count;
+
+	swidget->instance_id = ida_alloc_max(&fw_module->m_ida, max_instances, GFP_KERNEL);
+	if (swidget->instance_id < 0) {
+		dev_err(sdev->dev, "failed to assign instance id for widget %s",
+			swidget->widget->name);
+		return swidget->instance_id;
+	}
+
+	return 0;
+}
+
+static int sof_ipc4_init_audio_fmt(struct snd_sof_dev *sdev,
+				   struct snd_sof_widget *swidget,
+				   struct sof_ipc4_base_module_cfg *base_config,
+				   struct sof_ipc4_audio_format *out_format,
+				   struct snd_sof_platform_stream_params *params,
+				   struct sof_ipc4_available_audio_format *available_fmt,
+				   size_t object_offset)
+{
+	void *ptr = available_fmt->ref_audio_fmt;
+	u32 valid_bits;
+	u32 channels;
+	u32 rate;
+	int i;
+
+	dev_dbg(sdev->dev, "%s rate %d channels %d sample_valid_bytes %d direction %d\n",
+		__func__, params->rate, params->channels,
+		params->sample_valid_bytes, params->direction);
+
+	/*
+	 * Search supported audio formats to match rate, channels ,and
+	 * sample_valid_bytes from runtime params
+	 */
+	for (i = 0; i < available_fmt->audio_fmt_num; i++, ptr = (u8 *)ptr + object_offset) {
+		struct sof_ipc4_audio_format *fmt = ptr;
+
+		rate = fmt->sampling_frequency;
+		channels = SOF_IPC4_AUDIO_FORMAT_CFG_CHANNELS_COUNT(fmt->fmt_cfg);
+		valid_bits = SOF_IPC4_AUDIO_FORMAT_CFG_V_BIT_DEPTH(fmt->fmt_cfg);
+		if (params->rate == rate && params->channels == channels &&
+		    (params->sample_valid_bytes << 3) == valid_bits) {
+			dev_dbg(sdev->dev, "%s audio format matched %d rate %d channel %d valid_bits %d\n",
+				__func__, i, rate, channels, valid_bits);
+
+			/* copy ibs/obs/dma_buffer_size and input format */
+			memcpy(base_config, &available_fmt->base_config[i],
+			       sizeof(struct sof_ipc4_base_module_cfg));
+
+			/* copy output format */
+			if (out_format)
+				memcpy(out_format, &available_fmt->out_audio_fmt[i],
+				       sizeof(struct sof_ipc4_audio_format));
+			break;
+		}
+	}
+
+	if (i == available_fmt->audio_fmt_num) {
+		dev_err(sdev->dev, "Unsupported rate %d channels %d sample_valid_bytes %d\n",
+			params->rate, params->channels, params->sample_valid_bytes);
+		return -EINVAL;
+	}
+
+	sof_ipc4_dbg_audio_format(sdev->dev, &base_config->audio_fmt,
+				  sizeof(*base_config),
+				  1, swidget->widget->name, __func__);
+	if (out_format)
+		sof_ipc4_dbg_audio_format(sdev->dev, out_format,
+					  sizeof(*out_format),
+					  1, swidget->widget->name, __func__);
+	return i;
+}
+
+static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
+					  struct snd_sof_platform_stream_params *params)
+{
+	struct sof_ipc4_available_audio_format *available_fmt;
+	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct snd_sof_widget *pipe_widget;
+	struct sof_ipc4_pipeline *pipeline;
+	struct sof_ipc4_module_copier *copier;
+	struct sof_ipc4_copier *ipc4_copier;
+	size_t ref_audio_fmt_size;
+	void **ipc_config_data;
+	int *ipc_config_size;
+	u32 **data;
+	int ipc_size, ret;
+
+	dev_dbg(sdev->dev, "%s: copier %s, type %d", __func__, swidget->widget->name, swidget->id);
+
+	pipe_widget = swidget->pipe_widget;
+	pipeline = pipe_widget->private;
+
+	switch (swidget->id) {
+	case snd_soc_dapm_aif_in:
+	case snd_soc_dapm_aif_out:
+	{
+		struct sof_ipc4_gtw_attributes *gtw_attr;
+
+		ipc4_copier = (struct sof_ipc4_copier *)swidget->private;
+		copier = &ipc4_copier->copier;
+		available_fmt = &ipc4_copier->available_fmt;
+
+		/*
+		 * base_config->audio_fmt and out_audio_fmt represent the input and output audio
+		 * formats. Use the input format as the reference to match pcm params for playback
+		 * and the output format as reference for capture.
+		 */
+		if (params->direction == SNDRV_PCM_STREAM_PLAYBACK) {
+			available_fmt->ref_audio_fmt = &available_fmt->base_config->audio_fmt;
+			ref_audio_fmt_size = sizeof(struct sof_ipc4_base_module_cfg);
+		} else {
+			available_fmt->ref_audio_fmt = available_fmt->out_audio_fmt;
+			ref_audio_fmt_size = sizeof(struct sof_ipc4_audio_format);
+		}
+		copier->gtw_cfg.node_id &= ~(0xFF);
+		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(params->stream_tag - 1);
+
+		/* set gateway attributes */
+		gtw_attr = devm_kzalloc(sdev->dev, sizeof(*gtw_attr), GFP_KERNEL);
+		if (!gtw_attr)
+			return -ENOMEM;
+
+		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
+		copier->gtw_cfg.config_length = sizeof(*gtw_attr) >> 2;
+		ipc4_copier->copier_config = (uint32_t *)gtw_attr;
+		break;
+	}
+	case snd_soc_dapm_dai_in:
+	case snd_soc_dapm_dai_out:
+	{
+		struct snd_sof_dai *dai = swidget->private;
+
+		ipc4_copier = (struct sof_ipc4_copier *)dai->private;
+		copier = &ipc4_copier->copier;
+		available_fmt = &ipc4_copier->available_fmt;
+		if (params->direction == SNDRV_PCM_STREAM_PLAYBACK) {
+			available_fmt->ref_audio_fmt = available_fmt->out_audio_fmt;
+			ref_audio_fmt_size = sizeof(struct sof_ipc4_audio_format);
+		} else {
+			available_fmt->ref_audio_fmt = &available_fmt->base_config->audio_fmt;
+			ref_audio_fmt_size = sizeof(struct sof_ipc4_base_module_cfg);
+		}
+		break;
+	}
+	default:
+		dev_err(sdev->dev, "unsupported type %d for copier %s",
+			swidget->id, swidget->widget->name);
+		return -EINVAL;
+	}
+
+	/* set input and output audio formats */
+	ret = sof_ipc4_init_audio_fmt(sdev, swidget, &copier->base_config,
+				      &copier->out_format, params,
+				      available_fmt, ref_audio_fmt_size);
+	if (ret < 0)
+		return ret;
+
+	/* set the gateway dma_buffer_size using the matched ID returned above */
+	copier->gtw_cfg.dma_buffer_size = available_fmt->dma_buffer_size[ret];
+
+	data = &ipc4_copier->copier_config;
+	ipc_config_size = &ipc4_copier->ipc_config_size;
+	ipc_config_data = &ipc4_copier->ipc_config_data;
+
+	/* config_length is DWORD based */
+	ipc_size = sizeof(*copier) + copier->gtw_cfg.config_length * 4;
+
+	dev_dbg(sdev->dev, "copier %s, IPC size is %d", swidget->widget->name, ipc_size);
+
+	*ipc_config_data = devm_kzalloc(sdev->dev, ipc_size, GFP_KERNEL);
+	if (!*ipc_config_data)
+		return -ENOMEM;
+
+	*ipc_config_size = ipc_size;
+
+	/* copy IPC data */
+	memcpy(*ipc_config_data, (void *)copier, sizeof(*copier));
+	if (copier->gtw_cfg.config_length)
+		memcpy(*ipc_config_data + sizeof(*copier),
+		       *data, copier->gtw_cfg.config_length * 4);
+
+	/* update pipeline memory usage */
+	sof_ipc4_update_pipeline_mem_usage(sdev, swidget, &copier->base_config);
+
+	/* assign instance ID */
+	ret = sof_ipc4_widget_assign_instance_id(sdev, swidget);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
+static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+			       unsigned int flags, struct snd_sof_dai_config_data *data)
+{
+	struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
+	struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
+	struct snd_sof_dai *dai = swidget->private;
+	struct sof_ipc4_module_copier *copier;
+	struct sof_ipc4_copier *ipc4_copier;
+	struct sof_ipc4_gtw_attributes *gtw_attr;
+
+	if (!dai || !dai->private) {
+		dev_err(sdev->dev, "No private data for DAI %s\n", swidget->widget->name);
+		return -EINVAL;
+	}
+
+	ipc4_copier = (struct sof_ipc4_copier *)dai->private;
+	copier = &ipc4_copier->copier;
+
+	if (!data)
+		return 0;
+
+	copier->gtw_cfg.node_id &= ~(0xFF);
+
+	/* TODO: add SSP/DMIC cases */
+	switch (data->type) {
+	case SOF_DAI_INTEL_HDA:
+		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
+
+		gtw_attr = devm_kzalloc(sdev->dev, sizeof(*gtw_attr), GFP_KERNEL);
+		if (!gtw_attr)
+			return -ENOMEM;
+
+		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
+		copier->gtw_cfg.config_length = sizeof(*gtw_attr) >> 2;
+		ipc4_copier->copier_config = (uint32_t *)gtw_attr;
+		break;
+	case SOF_DAI_INTEL_ALH:
+		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
+		break;
+	default:
+		dev_warn(sdev->dev, "unsupported dai type %d\n", data->type);
+		break;
+	}
+
+	return 0;
+}
+
+static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
+{
+	struct sof_ipc4_fw_module *fw_module = swidget->module_info;
+	struct sof_ipc4_msg *msg;
+	void *ipc_data = NULL;
+	u32 ipc_size = 0;
+	int ret;
+
+	dev_dbg(sdev->dev, "Create widget %s instance %d - pipe %d - core %d\n",
+		swidget->widget->name, swidget->instance_id, swidget->pipeline_id, swidget->core);
+
+	switch (swidget->id) {
+	case snd_soc_dapm_aif_in:
+	case snd_soc_dapm_aif_out:
+	{
+		struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
+		struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
+		struct sof_ipc4_copier *ipc4_copier;
+
+		ipc4_copier = swidget->private;
+		ipc_size = ipc4_copier->ipc_config_size;
+		ipc_data = ipc4_copier->ipc_config_data;
+
+		msg = &ipc4_copier->msg;
+		msg->primary &= ~SOF_IPC4_MOD_INSTANCE_MASK;
+		msg->primary |= SOF_IPC4_MOD_INSTANCE(swidget->instance_id);
+
+		msg->extension |= ipc_size >> 2;
+		msg->extension |= SOF_IPC4_MOD_EXT_DOMAIN(pipeline->lp_mode);
+		break;
+	}
+	case snd_soc_dapm_dai_in:
+	case snd_soc_dapm_dai_out:
+	{
+		struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
+		struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
+		struct sof_ipc4_copier *ipc4_copier;
+		struct snd_sof_dai *dai;
+
+		dai = swidget->private;
+		ipc4_copier = dai->private;
+		ipc_size = ipc4_copier->ipc_config_size;
+		ipc_data = ipc4_copier->ipc_config_data;
+
+		msg = &ipc4_copier->msg;
+		msg->primary &= ~SOF_IPC4_MOD_INSTANCE_MASK;
+		msg->primary |= SOF_IPC4_MOD_INSTANCE(swidget->instance_id);
+
+		msg->extension |= ipc_size >> 2;
+		msg->extension |= SOF_IPC4_MOD_EXT_DOMAIN(pipeline->lp_mode);
+		break;
+	}
+	case snd_soc_dapm_scheduler:
+	{
+		struct sof_ipc4_pipeline *pipeline = swidget->private;
+
+		dev_dbg(sdev->dev, "pipeline: %d memory pages: %d\n", swidget->pipeline_id,
+			pipeline->mem_usage);
+
+		msg = &pipeline->msg;
+		msg->primary |= pipeline->mem_usage;
+		break;
+	}
+	default:
+		dev_err(sdev->dev, "widget type %d not supported", swidget->id);
+		return -EINVAL;
+	}
+
+	msg->data_size = ipc_size;
+	msg->data_ptr = ipc_data;
+
+	ret = sof_ipc_tx_message(sdev->ipc, msg, ipc_size, NULL, 0);
+	if (ret < 0)
+		dev_err(sdev->dev, "failed to create module %s\n", swidget->widget->name);
+
+	if (ipc_data)
+		sof_ipc4_dump_config(sdev, ipc_data, ipc_size);
+
+	return ret;
+}
+
+int sof_ipc4_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
+{
+	struct snd_sof_widget *src_widget = sroute->src_widget;
+	struct snd_sof_widget *sink_widget = sroute->sink_widget;
+	struct sof_ipc4_fw_module *src_fw_module = src_widget->module_info;
+	struct sof_ipc4_fw_module *sink_fw_module = sink_widget->module_info;
+	struct sof_ipc4_msg msg = {{ 0 }};
+	int src_queue = 0; /* FIXME */
+	int dst_queue = 0; /* FIXME */
+	u32 header, extension;
+	int ret;
+
+	dev_dbg(sdev->dev, "ipc4 bind module %d to module %d",
+		src_widget->instance_id, sink_widget->instance_id);
+
+	header = src_fw_module->man4_module_entry.id;
+	header |= SOF_IPC4_MOD_INSTANCE(src_widget->instance_id);
+	header |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_BIND);
+	header |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	header |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	extension = sink_fw_module->man4_module_entry.id;
+	extension |= SOF_IPC4_MOD_EXT_DST_MOD_INSTANCE(sink_widget->instance_id);
+	extension |= SOF_IPC4_MOD_EXT_DST_MOD_QUEUE_ID(dst_queue);
+	extension |= SOF_IPC4_MOD_EXT_SRC_MOD_QUEUE_ID(src_queue);
+
+	msg.primary = header;
+	msg.extension = extension;
+
+	ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
+	if (ret < 0)
+		dev_err(sdev->dev, "failed to bind module %s: %d to module %s: %d",
+			src_fw_module->man4_module_entry.name, src_widget->instance_id,
+			sink_fw_module->man4_module_entry.name, sink_widget->instance_id);
+
+	return ret;
+}
+
+static void sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
+{
+	struct snd_sof_widget *src_widget = sroute->src_widget;
+	struct snd_sof_widget *sink_widget = sroute->sink_widget;
+	struct sof_ipc4_fw_module *src_fw_module = src_widget->module_info;
+	struct sof_ipc4_fw_module *sink_fw_module = sink_widget->module_info;
+	struct sof_ipc4_msg msg = {{ 0 }};
+	int src_queue = 0; /* FIXME */
+	int dst_queue = 0; /* FIXME */
+	u32 header, extension;
+	int ret;
+
+	dev_dbg(sdev->dev, "ipc4 unbind module %d and module %d",
+		src_widget->instance_id, sink_widget->instance_id);
+
+	header = src_fw_module->man4_module_entry.id;
+	header |= SOF_IPC4_MOD_INSTANCE(src_widget->instance_id);
+	header |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_UNBIND);
+	header |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	header |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	extension = sink_fw_module->man4_module_entry.id;
+	extension |= SOF_IPC4_MOD_EXT_DST_MOD_INSTANCE(sink_widget->instance_id);
+	extension |= SOF_IPC4_MOD_EXT_DST_MOD_QUEUE_ID(dst_queue);
+	extension |= SOF_IPC4_MOD_EXT_SRC_MOD_QUEUE_ID(src_queue);
+
+	msg.primary = header;
+	msg.extension = extension;
+
+	ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
+	if (ret < 0)
+		dev_err(sdev->dev, "failed to unbind module %s: %d and module %s: %d",
+			src_fw_module->man4_module_entry.name, src_widget->instance_id,
+			sink_fw_module->man4_module_entry.name, sink_widget->instance_id);
 }
 
 /* token list for each topology object */
 static enum sof_tokens host_token_list[] = {
 	SOF_IPC4_COMP_TOKENS,
-	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
+	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS,
 	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
-	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
 	SOF_COMP_EXT_TOKENS,
 };
 
 static enum sof_tokens mixer_token_list[] = {
 	SOF_IPC4_COMP_TOKENS,
 	SOF_IPC4_MIXER_TOKENS,
-	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
-	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
-	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
+	SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS,
 	SOF_COMP_EXT_TOKENS,
 };
 
 static enum sof_tokens pipeline_token_list[] = {
-	SOF_IPC4_COMP_TOKENS,
-	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
-	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
-	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
-	SOF_IPC4_COPIER_TOKENS,
-	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_SCHED_TOKENS,
+	SOF_PIPELINE_TOKENS,
 };
 
 static enum sof_tokens pga_token_list[] = {
 	SOF_IPC4_COMP_TOKENS,
 	SOF_GAIN_TOKENS,
-	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
-	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
-	SOF_IPC4_COPIER_TOKENS,
 	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS,
+	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
 	SOF_COMP_EXT_TOKENS,
 };
 
 static enum sof_tokens dai_token_list[] = {
 	SOF_IPC4_COMP_TOKENS,
+	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_AUDIO_FORMAT_BUFFER_SIZE_TOKENS,
 	SOF_IPC4_IN_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
-	SOF_IPC4_AUDIO_FMT_NUM_TOKENS,
+	SOF_IPC4_COPIER_FORMAT_TOKENS,
 	SOF_COMP_EXT_TOKENS,
 };
 
 static const struct ipc_tplg_widget_ops tplg_ipc4_widget_ops[SND_SOC_DAPM_TYPE_COUNT] = {
 	[snd_soc_dapm_aif_in] =  {sof_ipc4_widget_setup_pcm, sof_ipc4_widget_free_comp,
-				  host_token_list, ARRAY_SIZE(host_token_list), NULL},
+				  host_token_list, ARRAY_SIZE(host_token_list), NULL,
+				  sof_ipc4_prepare_copier_module},
 	[snd_soc_dapm_aif_out] = {sof_ipc4_widget_setup_pcm, sof_ipc4_widget_free_comp,
-				  host_token_list, ARRAY_SIZE(host_token_list), NULL},
-
+				  host_token_list, ARRAY_SIZE(host_token_list), NULL,
+				  sof_ipc4_prepare_copier_module},
 	[snd_soc_dapm_dai_in] = {sof_ipc4_widget_setup_comp_dai, sof_ipc4_widget_free_comp_dai,
-				 dai_token_list, ARRAY_SIZE(dai_token_list), NULL},
+				 dai_token_list, ARRAY_SIZE(dai_token_list), NULL,
+				 sof_ipc4_prepare_copier_module},
 	[snd_soc_dapm_dai_out] = {sof_ipc4_widget_setup_comp_dai, sof_ipc4_widget_free_comp_dai,
-				  dai_token_list, ARRAY_SIZE(dai_token_list), NULL},
+				  dai_token_list, ARRAY_SIZE(dai_token_list), NULL,
+				  sof_ipc4_prepare_copier_module},
 	[snd_soc_dapm_mixer] = {sof_ipc4_widget_setup_comp_mixer, sof_ipc4_widget_free_comp,
 				mixer_token_list, ARRAY_SIZE(mixer_token_list),
-				NULL},
+				NULL, NULL},
 	[snd_soc_dapm_scheduler] = {sof_ipc4_widget_setup_comp_pipeline, sof_ipc4_widget_free_comp,
-				    pipeline_token_list, ARRAY_SIZE(pipeline_token_list), NULL},
+				    pipeline_token_list, ARRAY_SIZE(pipeline_token_list), NULL,
+				    NULL},
 	[snd_soc_dapm_pga] = {sof_ipc4_widget_setup_comp_pga, sof_ipc4_widget_free_comp,
-			      pga_token_list, ARRAY_SIZE(pga_token_list), NULL},
+			      pga_token_list, ARRAY_SIZE(pga_token_list), NULL, NULL},
 };
 
 const struct ipc_tplg_ops ipc4_tplg_ops = {
 	.widget = tplg_ipc4_widget_ops,
 	.token_list = ipc4_token_list,
 	.widget_free = sof_ipc4_widget_free,
+	.route_setup = sof_ipc4_route_setup,
+	.route_free = sof_ipc4_route_free,
+	.dai_config = sof_ipc4_dai_config,
+	.widget_setup = sof_ipc4_widget_setup,
 };

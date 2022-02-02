@@ -8,12 +8,14 @@
 // Authors: Rander Wang <rander.wang@linux.intel.com>
 //	    Peter Ujfalusi <peter.ujfalusi@linux.intel.com>
 //
+#include <sound/sof/ext_manifest4.h>
 #include <sound/sof/header.h>
 #include <sound/sof/ipc4/header.h>
 #include "sof-priv.h"
 #include "sof-audio.h"
 #include "ipc4-priv.h"
 #include "ipc4-ops.h"
+#include "ipc4-priv.h"
 #include "ops.h"
 
 static const struct sof_ipc4_fw_status {
@@ -644,6 +646,21 @@ static void sof_ipc4_rx_msg(struct snd_sof_dev *sdev)
 		kfree(ipc4_msg->data_ptr);
 		ipc4_msg->data_ptr = NULL;
 		ipc4_msg->data_size = 0;
+	}
+}
+
+void sof_ipc4_dump_config(struct snd_sof_dev *sdev, void *ipc_data, u32 size)
+{
+	int *data = (int *)ipc_data;
+	int i, dw_size;
+	char buffer[36];
+
+	dw_size = size >> 2;
+	for (i = 0; i < dw_size; i += 4) {
+		int len = (i + 4 < dw_size) ? 16 : (dw_size - i) * 4;
+
+		hex_dump_to_buffer(data + i, len, 16, 4, buffer, sizeof(buffer), false);
+		dev_dbg(sdev->dev, "%s", buffer);
 	}
 }
 

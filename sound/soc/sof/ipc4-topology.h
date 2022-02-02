@@ -54,6 +54,7 @@ struct sof_ipc4_pipeline {
 	uint32_t lp_mode;
 	uint32_t mem_usage;
 	int state;
+	struct sof_ipc4_msg msg;
 };
 
 /**
@@ -66,6 +67,7 @@ struct sof_ipc4_available_audio_format {
 	struct sof_ipc4_base_module_cfg *base_config;
 	struct sof_ipc4_audio_format *out_audio_fmt;
 	struct sof_ipc4_audio_format *ref_audio_fmt;
+	u32 *dma_buffer_size;
 	int audio_fmt_num;
 };
 
@@ -75,6 +77,7 @@ struct sof_ipc4_available_audio_format {
  * @copier_config: Copier + blob
  * @ipc_config_size: Size of copier_config
  * @available_fmt: Available audio format
+ * @frame_fmt: frame format
  */
 struct sof_ipc4_copier {
 	struct sof_ipc4_module_copier copier;
@@ -82,6 +85,8 @@ struct sof_ipc4_copier {
 	uint32_t ipc_config_size;
 	void *ipc_config_data;
 	struct sof_ipc4_available_audio_format available_fmt;
+	u32 frame_fmt;
+	struct sof_ipc4_msg msg;
 };
 
 /**

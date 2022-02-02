@@ -192,6 +192,7 @@ static bool cnl_compact_ipc_compress(struct snd_sof_ipc_msg *msg,
 
 int cnl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 {
+#if 0
 	struct sof_intel_hda_dev *hdev = sdev->pdata->hw_pdata;
 	struct sof_ipc_cmd_hdr *hdr;
 	u32 dr = 0;
@@ -233,6 +234,23 @@ int cnl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	if (hdr->cmd != (SOF_IPC_GLB_PM_MSG | SOF_IPC_PM_CTX_SAVE))
 		mod_delayed_work(system_wq, &hdev->d0i3_work,
 				 msecs_to_jiffies(SOF_HDA_D0I3_WORK_DELAY_MS));
+
+	return 0;
+#endif
+	struct sof_ipc4_msg *msg_data = msg->msg_data;
+
+	dev_dbg(sdev->dev, "primary %#x | extension %#x data_size %#zx offset %#x\n",
+		msg_data->primary, msg_data->extension, msg_data->data_size,
+		sdev->host_box.offset);
+
+	/* send the message via mailbox */
+	if (msg_data->data_size)
+		sof_mailbox_write(sdev, sdev->host_box.offset, msg_data->data_ptr,
+				  msg_data->data_size);
+
+	snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDD, msg_data->extension);
+	snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR,
+			  msg_data->primary | CNL_DSP_REG_HIPCIDR_BUSY);
 
 	return 0;
 }
