@@ -1035,7 +1035,7 @@ static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 	return ret;
 }
 
-int sof_ipc4_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
+static int sof_ipc4_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
 {
 	struct snd_sof_widget *src_widget = sroute->src_widget;
 	struct snd_sof_widget *sink_widget = sroute->sink_widget;
