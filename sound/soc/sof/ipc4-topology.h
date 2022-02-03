@@ -11,7 +11,7 @@
 
 #include <sound/sof/ipc4/header.h>
 
-#define SOF_IPC4_NODE_INDEX(x)	(x)
+#define SOF_IPC4_NODE_INDEX(x)	((x) & 0xff)
 #define SOF_IPC4_NODE_TYPE(x)  ((x) << 8)
 
 /**
