@@ -62,6 +62,12 @@ irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 
 		spin_lock_irq(&sdev->ipc_lock);
 
+		if (sdev->pdata->ipc_type == SOF_IPC) {
+			/* handle immediate reply from DSP core */
+			hda_dsp_ipc_get_reply(sdev);
+			snd_sof_ipc_reply(sdev, msg);
+		}
+
 		cnl_ipc_dsp_done(sdev);
 
 		spin_unlock_irq(&sdev->ipc_lock);
@@ -97,7 +103,7 @@ irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 
 			snd_sof_dsp_panic(sdev, HDA_DSP_PANIC_OFFSET(msg_ext),
 					  non_recoverable);
-		} else {
+		} else if (sdev->pdata->ipc_type == SOF_INTEL_IPC4) {
 			/* TODO: This is hacky. How do we pass the header for IPC4? IPC3 reads it
 			 * from the mailbox, so no need to pass anything
 			 */
@@ -116,6 +122,8 @@ irqreturn_t cnl_ipc_irq_thread(int irq, void *context)
 			}
 
 			sdev->ipc->msg.rx_data = NULL;
+		} else {
+			snd_sof_ipc_msgs_rx(sdev);
 		}
 
 		cnl_ipc_host_done(sdev);
@@ -192,65 +200,64 @@ static bool cnl_compact_ipc_compress(struct snd_sof_ipc_msg *msg,
 
 int cnl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 {
-#if 0
-	struct sof_intel_hda_dev *hdev = sdev->pdata->hw_pdata;
-	struct sof_ipc_cmd_hdr *hdr;
-	u32 dr = 0;
-	u32 dd = 0;
+	if (sdev->pdata->ipc_type == SOF_IPC) {
+		struct sof_intel_hda_dev *hdev = sdev->pdata->hw_pdata;
+		struct sof_ipc_cmd_hdr *hdr;
+		u32 dr = 0;
+		u32 dd = 0;
 
-	/*
-	 * Currently the only compact IPC supported is the PM_GATE
-	 * IPC which is used for transitioning the DSP between the
-	 * D0I0 and D0I3 states. And these are sent only during the
-	 * set_power_state() op. Therefore, there will never be a case
-	 * that a compact IPC results in the DSP exiting D0I3 without
-	 * the host and FW being in sync.
-	 */
-	if (cnl_compact_ipc_compress(msg, &dr, &dd)) {
-		/* send the message via IPC registers */
-		snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDD,
-				  dd);
+		/*
+		* Currently the only compact IPC supported is the PM_GATE
+		* IPC which is used for transitioning the DSP between the
+		* D0I0 and D0I3 states. And these are sent only during the
+		* set_power_state() op. Therefore, there will never be a case
+		* that a compact IPC results in the DSP exiting D0I3 without
+		* the host and FW being in sync.
+		*/
+		if (cnl_compact_ipc_compress(msg, &dr, &dd)) {
+			/* send the message via IPC registers */
+			snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDD,
+					dd);
+			snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR,
+					CNL_DSP_REG_HIPCIDR_BUSY | dr);
+			return 0;
+		}
+
+		/* send the message via mailbox */
+		sof_mailbox_write(sdev, sdev->host_box.offset, msg->msg_data,
+				msg->msg_size);
 		snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR,
-				  CNL_DSP_REG_HIPCIDR_BUSY | dr);
-		return 0;
+				CNL_DSP_REG_HIPCIDR_BUSY);
+
+		hdr = msg->msg_data;
+
+		/*
+		* Use mod_delayed_work() to schedule the delayed work
+		* to avoid scheduling multiple workqueue items when
+		* IPCs are sent at a high-rate. mod_delayed_work()
+		* modifies the timer if the work is pending.
+		* Also, a new delayed work should not be queued after the
+		* CTX_SAVE IPC, which is sent before the DSP enters D3.
+		*/
+		if (hdr->cmd != (SOF_IPC_GLB_PM_MSG | SOF_IPC_PM_CTX_SAVE))
+			mod_delayed_work(system_wq, &hdev->d0i3_work,
+					msecs_to_jiffies(SOF_HDA_D0I3_WORK_DELAY_MS));
+	} else if (sdev->pdata->ipc_type == SOF_INTEL_IPC4) {
+		struct sof_ipc4_msg *msg_data = msg->msg_data;
+
+		dev_dbg(sdev->dev, "primary %#x | extension %#x data_size %#zx offset %#x\n",
+			msg_data->primary, msg_data->extension, msg_data->data_size,
+			sdev->host_box.offset);
+
+		/* send the message via mailbox */
+		if (msg_data->data_size)
+			sof_mailbox_write(sdev, sdev->host_box.offset, msg_data->data_ptr,
+					msg_data->data_size);
+
+		snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDD, msg_data->extension);
+		snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR,
+				msg_data->primary | CNL_DSP_REG_HIPCIDR_BUSY);
 	}
-
-	/* send the message via mailbox */
-	sof_mailbox_write(sdev, sdev->host_box.offset, msg->msg_data,
-			  msg->msg_size);
-	snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR,
-			  CNL_DSP_REG_HIPCIDR_BUSY);
-
-	hdr = msg->msg_data;
-
-	/*
-	 * Use mod_delayed_work() to schedule the delayed work
-	 * to avoid scheduling multiple workqueue items when
-	 * IPCs are sent at a high-rate. mod_delayed_work()
-	 * modifies the timer if the work is pending.
-	 * Also, a new delayed work should not be queued after the
-	 * CTX_SAVE IPC, which is sent before the DSP enters D3.
-	 */
-	if (hdr->cmd != (SOF_IPC_GLB_PM_MSG | SOF_IPC_PM_CTX_SAVE))
-		mod_delayed_work(system_wq, &hdev->d0i3_work,
-				 msecs_to_jiffies(SOF_HDA_D0I3_WORK_DELAY_MS));
-
-	return 0;
-#endif
-	struct sof_ipc4_msg *msg_data = msg->msg_data;
-
-	dev_dbg(sdev->dev, "primary %#x | extension %#x data_size %#zx offset %#x\n",
-		msg_data->primary, msg_data->extension, msg_data->data_size,
-		sdev->host_box.offset);
-
-	/* send the message via mailbox */
-	if (msg_data->data_size)
-		sof_mailbox_write(sdev, sdev->host_box.offset, msg_data->data_ptr,
-				  msg_data->data_size);
-
-	snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDD, msg_data->extension);
-	snd_sof_dsp_write(sdev, HDA_DSP_BAR, CNL_DSP_REG_HIPCIDR,
-			  msg_data->primary | CNL_DSP_REG_HIPCIDR_BUSY);
 
 	return 0;
 }
