@@ -2003,12 +2003,37 @@ static int sof_ipc3_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 
 	config->flags = flags;
 
-	ret = sof_ipc_tx_message(sdev->ipc, config, config->hdr.size,
-				 &reply, sizeof(reply));
-	if (ret < 0)
-		dev_err(sdev->dev, "Failed to set dai config for %s\n", dai->name);
+	return 0;
+}
 
-	return ret;
+static int sof_ipc3_dai_config_ipc(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
+{
+	struct sof_ipc_fw_version *v = &sdev->fw_ready.version;
+	struct snd_sof_dai *dai = swidget->private;
+	struct sof_dai_private_data *private;
+	struct sof_ipc_dai_config *config;
+	struct sof_ipc_reply reply;
+	int ret;
+
+	if (!dai || !dai->private) {
+		dev_err(sdev->dev, "No private data for DAI %s\n", swidget->widget->name);
+		return -EINVAL;
+	}
+
+	private = dai->private;
+	if (!private->dai_config) {
+		dev_err(sdev->dev, "No config for DAI %s\n", dai->name);
+		return -EINVAL;
+	}
+
+	config = &private->dai_config[dai->current_config];
+	if (!config) {
+		dev_err(sdev->dev, "Invalid current config for DAI %s\n", dai->name);
+		return -EINVAL;
+	}
+
+	return sof_ipc_tx_message(sdev->ipc, config, config->hdr.size,
+				 &reply, sizeof(reply));
 }
 
 static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
@@ -2379,6 +2404,7 @@ const struct ipc_tplg_ops ipc3_tplg_ops = {
 	.widget_free = sof_ipc3_widget_free,
 	.widget_setup = sof_ipc3_widget_setup,
 	.dai_config = sof_ipc3_dai_config,
+	.dai_config_ipc = sof_ipc3_dai_config_ipc,
 	.dai_get_clk = sof_ipc3_dai_get_clk,
 	.set_up_all_pipelines = sof_ipc3_set_up_all_pipelines,
 	.tear_down_all_pipelines = sof_ipc3_tear_down_all_pipelines,
