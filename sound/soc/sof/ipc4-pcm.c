@@ -111,7 +111,7 @@ set:
 		pipeline->state = state;
 	}
 
-	return ret;
+	return 0;
 }
 
 static int sof_ipc4_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,

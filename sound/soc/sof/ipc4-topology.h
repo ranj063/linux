@@ -110,6 +110,7 @@ struct sof_ipc4_gain {
 	struct sof_ipc4_base_module_cfg base_config;
 	struct sof_ipc4_gain_data data;
 	struct sof_ipc4_available_audio_format available_fmt;
+	struct sof_ipc4_msg msg;
 };
 
 enum sof_ipc4_mixer_type {

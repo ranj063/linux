@@ -172,6 +172,23 @@ static int sof_pcm_hw_params(struct snd_soc_component *component,
 	platform_params.channels = params_channels(params);
 	platform_params.direction = substream->stream;
 
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16:
+		platform_params.frame_fmt = SOF_IPC_FRAME_S16_LE;
+		break;
+	case SNDRV_PCM_FORMAT_S24:
+		platform_params.frame_fmt = SOF_IPC_FRAME_S24_4LE;
+		break;
+	case SNDRV_PCM_FORMAT_S32:
+		platform_params.frame_fmt = SOF_IPC_FRAME_S32_LE;
+		break;
+	case SNDRV_PCM_FORMAT_FLOAT:
+		platform_params.frame_fmt = SOF_IPC_FRAME_FLOAT;
+		break;
+	default:
+		break;
+	}
+
 	/* if this is a repeated hw_params without hw_free, skip setting up widgets */
 	if (!spcm->stream[substream->stream].list) {
 		ret = sof_pcm_setup_connected_widgets(sdev, rtd, spcm, &platform_params);
@@ -363,9 +380,11 @@ static int sof_pcm_trigger(struct snd_soc_component *component,
 		snd_sof_pcm_platform_trigger(sdev, substream, cmd);
 
 	/* free PCM if reset_hw_params is set and the STOP IPC is successful */
-	if (!ret && reset_hw_params)
+	if (!ret && reset_hw_params) {
+		dev_dbg(sdev->dev, "ranjani freeing pcm\n");
 		ret = sof_pcm_stream_free(sdev, substream, spcm, substream->stream,
 					  free_widget_list);
+	}
 
 	return ret;
 }

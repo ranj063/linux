@@ -517,6 +517,8 @@ int sof_pcm_stream_free(struct snd_sof_dev *sdev, struct snd_pcm_substream *subs
 	if (ret < 0)
 		return ret;
 
+	dev_dbg(sdev->dev, "ranjani freeing list\n");
+
 	/* free widget list */
 	if (free_widget_list) {
 		ret = sof_widget_list_free(sdev, spcm, dir);

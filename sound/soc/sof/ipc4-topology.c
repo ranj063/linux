@@ -17,7 +17,8 @@
 #include "ops.h"
 
 /* Full volume for default values */
-#define VOL_ZERO_DB	0x7fffffff
+#define SOF_IPC4_VOL_ZERO_DB	0x7fffffff
+#define SOF_IPC4_GAIN_ALL_CHANNELS_MASK 0xffffffff
 
 struct sof_widget_data {
 	int ctrl_type;
@@ -543,6 +544,7 @@ static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
 static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 {
 	struct snd_soc_component *scomp = swidget->scomp;
+	struct sof_ipc4_fw_module *fw_module;
 	struct sof_ipc4_gain *gain;
 	int ret;
 
@@ -552,6 +554,9 @@ static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 
 	swidget->private = gain;
 
+	gain->data.channels = SOF_IPC4_GAIN_ALL_CHANNELS_MASK;
+	gain->data.init_val = SOF_IPC4_VOL_ZERO_DB;
+
 	/* The out_audio_fmt in topology is ignored as it is not required to be sent to the FW */
 	ret = sof_ipc4_get_audio_fmt(scomp, swidget, &gain->available_fmt, false);
 	if (ret != 0)
@@ -560,15 +565,30 @@ static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 	ret = sof_update_ipc_object(scomp, &gain->data, SOF_GAIN_TOKENS, swidget->tuples,
 				    swidget->num_tuples, sizeof(gain->data), 1);
 	if (ret != 0) {
-		dev_err(scomp->dev, "parse gain tokens failed\n");
+		dev_err(scomp->dev, "Parsing gain tokens failed\n");
 		goto err;
 	}
 
-	dev_dbg(scomp->dev, "tplg2: ready widget %s, ramp_type %d, duration %d, val %d  cpc %d",
+	dev_dbg(scomp->dev,
+		"gain widget %s: ramp type: %d, ramp duration %d, initial gain value: %#x, cpc %d\n",
 		swidget->widget->name, gain->data.curve_type, gain->data.curve_duration,
 		gain->data.init_val, gain->base_config.cpc);
 
-	return sof_ipc4_widget_set_module_info(scomp, swidget);
+	ret = sof_ipc4_widget_set_module_info(scomp, swidget);
+	if (ret < 0)
+		goto err;
+
+	fw_module = swidget->module_info;
+
+	gain->msg.primary = fw_module->man4_module_entry.id;
+	gain->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
+	gain->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	gain->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	gain->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
+	gain->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
+
+	return 0;
 err:
 	kfree(gain);
 	return ret;
@@ -786,6 +806,41 @@ static int sof_ipc4_init_audio_fmt(struct snd_sof_dev *sdev,
 	return i;
 }
 
+static int sof_ipc4_prepare_gain_module(struct snd_sof_widget *swidget,
+					struct snd_sof_platform_stream_params *params)
+{
+	struct snd_sof_platform_stream_params *local_params;
+	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct sof_ipc4_gain *gain = swidget->private;
+	int ret;
+
+	local_params =  kzalloc(sizeof(*local_params), GFP_KERNEL);
+	if (!local_params)
+		return -ENOMEM;
+
+	memcpy(local_params, params, sizeof(*params));
+
+	if (params->frame_fmt == SOF_IPC_FRAME_S24_4LE)
+		params->sample_valid_bytes = 4;
+
+	gain->available_fmt.ref_audio_fmt = &gain->available_fmt.base_config->audio_fmt;
+
+	/* output format is not required to be sent to the FW for gain */
+	ret = sof_ipc4_init_audio_fmt(sdev, swidget, &gain->base_config,
+				      NULL, local_params, &gain->available_fmt,
+				      sizeof(gain->base_config));
+	kfree(local_params);
+	if (ret < 0)
+		return ret;
+
+	/* update pipeline memory usage */
+	sof_ipc4_update_pipeline_mem_usage(sdev, swidget, &gain->base_config);
+
+	/* assign instance ID */
+	return sof_ipc4_widget_assign_instance_id(sdev, swidget);
+}
+
 static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 					  struct snd_sof_platform_stream_params *params)
 {
@@ -900,11 +955,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 	sof_ipc4_update_pipeline_mem_usage(sdev, swidget, &copier->base_config);
 
 	/* assign instance ID */
-	ret = sof_ipc4_widget_assign_instance_id(sdev, swidget);
-	if (ret < 0)
-		return ret;
-
-	return 0;
+	return sof_ipc4_widget_assign_instance_id(sdev, swidget);
 }
 
 static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
@@ -956,7 +1007,6 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 
 static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 {
-	struct sof_ipc4_fw_module *fw_module = swidget->module_info;
 	struct sof_ipc4_msg *msg;
 	void *ipc_data = NULL;
 	u32 ipc_size = 0;
@@ -1015,6 +1065,24 @@ static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 
 		msg = &pipeline->msg;
 		msg->primary |= pipeline->mem_usage;
+		break;
+	}
+	case snd_soc_dapm_pga:
+	{
+		struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
+		struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
+		struct sof_ipc4_gain *gain = swidget->private;
+
+		ipc_size = sizeof(struct sof_ipc4_base_module_cfg) +
+			   sizeof(struct sof_ipc4_gain_data);
+		ipc_data = gain;
+
+		msg = &gain->msg;
+		msg->primary &= ~SOF_IPC4_MOD_INSTANCE_MASK;
+		msg->primary |= SOF_IPC4_MOD_INSTANCE(swidget->instance_id);
+
+		msg->extension |= ipc_size >> 2;
+		msg->extension |= SOF_IPC4_MOD_EXT_DOMAIN(pipeline->lp_mode);
 		break;
 	}
 	default:
@@ -1176,7 +1244,8 @@ static const struct ipc_tplg_widget_ops tplg_ipc4_widget_ops[SND_SOC_DAPM_TYPE_C
 				    pipeline_token_list, ARRAY_SIZE(pipeline_token_list), NULL,
 				    NULL},
 	[snd_soc_dapm_pga] = {sof_ipc4_widget_setup_comp_pga, sof_ipc4_widget_free_comp,
-			      pga_token_list, ARRAY_SIZE(pga_token_list), NULL, NULL},
+			      pga_token_list, ARRAY_SIZE(pga_token_list), NULL,
+			      sof_ipc4_prepare_gain_module},
 };
 
 const struct ipc_tplg_ops ipc4_tplg_ops = {

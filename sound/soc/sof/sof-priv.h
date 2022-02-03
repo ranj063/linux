@@ -123,6 +123,7 @@ struct snd_sof_platform_stream_params {
 	u16 sample_valid_bytes;
 	u16 channels;
 	int direction;
+	int frame_fmt;
 };
 
 /*
