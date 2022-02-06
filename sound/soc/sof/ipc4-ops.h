@@ -12,5 +12,6 @@
 #include "sof-priv.h"
 
 extern const struct ipc_ops ipc4_ops;
+extern const struct ipc_tplg_control_ops tplg_ipc4_control_ops;
 
 #endif

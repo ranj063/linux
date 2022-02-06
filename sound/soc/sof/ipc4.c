@@ -504,6 +504,8 @@ static int sof_ipc4_set_get_data(struct snd_sof_dev *sdev, void *data,
 			goto out;
 		}
 
+		sof_ipc4_dump_config(sdev, tx.data_ptr, tx.data_size);
+
 		if (!set && rx.extension & SOF_IPC4_MOD_EXT_MSG_FIRST_BLOCK_MASK) {
 			/* Verify the firmware reported total payload size */
 			rx_size = rx.extension & SOF_IPC4_MOD_EXT_MSG_SIZE_MASK;

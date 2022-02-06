@@ -245,9 +245,8 @@ int cnl_ipc_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg)
 	} else if (sdev->pdata->ipc_type == SOF_INTEL_IPC4) {
 		struct sof_ipc4_msg *msg_data = msg->msg_data;
 
-		dev_dbg(sdev->dev, "primary %#x | extension %#x data_size %#zx offset %#x\n",
-			msg_data->primary, msg_data->extension, msg_data->data_size,
-			sdev->host_box.offset);
+		dev_dbg(sdev->dev, "%s: primary %#x | extension %#x data_size %#zx\n", __func__,
+			msg_data->primary, msg_data->extension, msg_data->data_size);
 
 		/* send the message via mailbox */
 		if (msg_data->data_size)

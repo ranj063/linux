@@ -17,8 +17,7 @@
 #include "ops.h"
 
 /* Full volume for default values */
-#define SOF_IPC4_VOL_ZERO_DB	0x7fffffff
-#define SOF_IPC4_GAIN_ALL_CHANNELS_MASK 0xffffffff
+#define SOF_IPC4_GAIN_PARAM_ID  0
 
 struct sof_widget_data {
 	int ctrl_type;
@@ -544,7 +543,9 @@ static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
 static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 {
 	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct sof_ipc4_fw_module *fw_module;
+	struct snd_sof_control *scontrol;
 	struct sof_ipc4_gain *gain;
 	int ret;
 
@@ -587,6 +588,15 @@ static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 
 	gain->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
 	gain->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
+
+	/* update module ID for all kcontrols for this widget */
+	list_for_each_entry(scontrol, &sdev->kcontrol_list, list)
+		if (scontrol->comp_id == swidget->comp_id) {
+			struct sof_ipc4_control_data *cdata = scontrol->ipc_control_data;
+			struct sof_ipc4_msg *msg = &cdata->msg;
+
+			msg->primary |= fw_module->man4_module_entry.id;
+		}
 
 	return 0;
 err:
@@ -1177,6 +1187,51 @@ static void sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *
 			sink_fw_module->man4_module_entry.name, sink_widget->instance_id);
 }
 
+static int sof_ipc4_control_load_volume(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol)
+{
+	struct sof_ipc4_control_data *control_data;
+	struct sof_ipc4_msg *msg;
+	int i;
+
+	scontrol->size = struct_size(control_data, chanv, scontrol->num_channels);
+
+	scontrol->ipc_control_data = kzalloc(scontrol->size, GFP_KERNEL);
+	if (!scontrol->ipc_control_data)
+		return -ENOMEM;
+
+	control_data = scontrol->ipc_control_data;
+	control_data->index = scontrol->index;
+
+	msg = &control_data->msg;
+	msg->primary = SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_LARGE_CONFIG_SET);
+	msg->primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	msg->primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	msg->extension = SOF_IPC4_MOD_EXT_MSG_PARAM_ID(SOF_IPC4_GAIN_PARAM_ID);
+
+	/* set default volume values to 0dB in control */
+	for (i = 0; i < scontrol->num_channels; i++) {
+		control_data->chanv[i].channel = i;
+		control_data->chanv[i].value = SOF_IPC4_VOL_ZERO_DB;
+	}
+
+	return 0;
+}
+
+static int sof_ipc4_control_setup(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol)
+{
+	switch (scontrol->info_type) {
+	case SND_SOC_TPLG_CTL_VOLSW:
+	case SND_SOC_TPLG_CTL_VOLSW_SX:
+	case SND_SOC_TPLG_CTL_VOLSW_XR_SX:
+		return sof_ipc4_control_load_volume(sdev, scontrol);
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 /* token list for each topology object */
 static enum sof_tokens host_token_list[] = {
 	SOF_IPC4_COMP_TOKENS,
@@ -1251,9 +1306,11 @@ static const struct ipc_tplg_widget_ops tplg_ipc4_widget_ops[SND_SOC_DAPM_TYPE_C
 const struct ipc_tplg_ops ipc4_tplg_ops = {
 	.widget = tplg_ipc4_widget_ops,
 	.token_list = ipc4_token_list,
+	.control = &tplg_ipc4_control_ops,
 	.widget_free = sof_ipc4_widget_free,
 	.route_setup = sof_ipc4_route_setup,
 	.route_free = sof_ipc4_route_free,
 	.dai_config = sof_ipc4_dai_config,
 	.widget_setup = sof_ipc4_widget_setup,
+	.control_setup = sof_ipc4_control_setup,
 };

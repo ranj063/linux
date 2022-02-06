@@ -14,6 +14,36 @@
 #define SOF_IPC4_NODE_INDEX(x)	((x) & 0xff)
 #define SOF_IPC4_NODE_TYPE(x)  ((x) << 8)
 
+#define SOF_IPC4_GAIN_ALL_CHANNELS_MASK 0xffffffff
+#define SOF_IPC4_VOL_ZERO_DB	0x7fffffff
+
+/**
+ * struct sof_ipc4_ctrl_value_chan: generic channel mapped value data
+ * @channel: Channel ID
+ * @value: gain value
+ */
+struct sof_ipc4_ctrl_value_chan {
+	u32 channel;
+	u32 value;
+};
+
+/**
+ * struct sof_ipc4_control_data - IPC data for kcontrol IO
+ * @msg: message structure for kcontrol IO
+ * @index: pipeline ID
+ * @chanv: channel ID and value array used by volume type controls
+ * @data: Binary data used by binary controls
+ */
+struct sof_ipc4_control_data {
+	struct sof_ipc4_msg msg;
+	int index;
+
+	union {
+		struct sof_ipc4_ctrl_value_chan chanv[0];
+		struct sof_abi_hdr data[0];
+	};
+};
+
 /**
  * struct sof_copier_gateway_cfg - IPC gateway configuration
  * @node_id: ID of Gateway Node
