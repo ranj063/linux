@@ -285,16 +285,33 @@ int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 	return 0;
 }
 
-int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, int dir)
+static void sof_free_widgets(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget_list *list,
+			     bool dai_widget_free)
 {
-	const struct ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
-	struct snd_soc_dapm_widget_list *list = spcm->stream[dir].list;
 	struct snd_soc_dapm_widget *widget;
-	int i, ret, num_widgets;
+	int i;
 
-	/* nothing to set up */
-	if (!list)
-		return 0;
+	for_each_dapm_widgets(list, i, widget) {
+		struct snd_sof_widget *swidget = widget->dobj.private;
+
+		if (!swidget)
+			continue;
+
+		if (dai_widget_free && !WIDGET_IS_DAI(swidget->id))
+			continue;
+
+		if (!dai_widget_free && WIDGET_IS_DAI(swidget->id))
+			continue;
+
+		sof_widget_free(sdev, swidget);
+	}
+}
+
+static int sof_setup_widgets(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget_list *list,
+			     bool dai_widget_setup)
+{
+	struct snd_soc_dapm_widget *widget;
+	int num_widgets, i, ret;
 
 	/* set up widgets in the list */
 	for_each_dapm_widgets(list, num_widgets, widget) {
@@ -304,9 +321,72 @@ int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, in
 			continue;
 
 		/* set up the widget */
+		if (dai_widget_setup && !WIDGET_IS_DAI(swidget->id))
+			continue;
+
+		if (!dai_widget_setup && WIDGET_IS_DAI(swidget->id))
+			continue;
+
 		ret = sof_widget_setup(sdev, swidget);
 		if (ret < 0)
-			goto widget_free;
+			goto free;
+	}
+
+	return 0;
+free:
+	/* free all widgets that have been set up successfully */
+	for_each_dapm_widgets(list, i, widget) {
+		struct snd_sof_widget *swidget = widget->dobj.private;
+
+		if (!num_widgets--)
+			break;
+
+		if (!swidget)
+			continue;
+
+		if (dai_widget_setup && !WIDGET_IS_DAI(swidget->id))
+			continue;
+
+		if (!dai_widget_setup && WIDGET_IS_DAI(swidget->id))
+			continue;
+
+		sof_widget_free(sdev, swidget);
+	}
+
+	return ret;
+}
+
+int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, int dir)
+{
+	const struct ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
+	struct snd_soc_dapm_widget_list *list = spcm->stream[dir].list;
+	struct snd_soc_dapm_widget *widget;
+	int i, ret;
+
+	/* nothing to set up */
+	if (!list)
+		return 0;
+
+	if (dir == 0) {
+		ret = sof_setup_widgets(sdev, list, false);
+		if (ret < 0)
+			return ret;
+
+		ret = sof_setup_widgets(sdev, list, true);
+		if (ret < 0) {
+			sof_free_widgets(sdev, list, false);
+			return ret;
+		}
+	} else {
+		ret = sof_setup_widgets(sdev, list, true);
+		if (ret < 0)
+			return ret;
+
+		ret = sof_setup_widgets(sdev, list, false);
+		if (ret < 0) {
+			sof_free_widgets(sdev, list, true);
+			return ret;
+		}
 	}
 
 	/*
@@ -348,15 +428,12 @@ int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, in
 	return 0;
 
 widget_free:
-	/* free all widgets that have been set up successfully */
+	/* free all widgets */
 	for_each_dapm_widgets(list, i, widget) {
 		struct snd_sof_widget *swidget = widget->dobj.private;
 
 		if (!swidget)
 			continue;
-
-		if (!num_widgets--)
-			break;
 
 		sof_widget_free(sdev, swidget);
 	}
@@ -501,8 +578,6 @@ int sof_pcm_stream_free(struct snd_sof_dev *sdev, struct snd_pcm_substream *subs
 	ret = snd_sof_pcm_platform_hw_free(sdev, substream);
 	if (ret < 0)
 		return ret;
-
-	dev_dbg(sdev->dev, "ranjani freeing list\n");
 
 	/* free widget list */
 	if (free_widget_list) {
