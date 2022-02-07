@@ -19,7 +19,7 @@ static void sof_reset_route_setup_status(struct snd_sof_dev *sdev, struct snd_so
 
 	list_for_each_entry(sroute, &sdev->route_list, list)
 		if (sroute->src_widget == widget || sroute->sink_widget == widget) {
-			if (tplg_ops->route_free)
+			if (sroute->setup && tplg_ops->route_free)
 				tplg_ops->route_free(sdev, sroute);
 			sroute->setup = false;
 		}

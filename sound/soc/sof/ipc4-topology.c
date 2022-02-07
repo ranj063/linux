@@ -398,6 +398,8 @@ static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 	}
 	dev_dbg(scomp->dev, "host copier %s node_type %u\n", swidget->widget->name, node_type);
 
+	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
+
 	/* set up module info and message header */
 	ret = sof_ipc4_widget_setup_msg(swidget, &ipc4_copier->msg);
 	if (ret < 0)
