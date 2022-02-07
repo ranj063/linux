@@ -399,6 +399,8 @@ static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 	dev_dbg(scomp->dev, "host copier %s node_type %u\n", swidget->widget->name, node_type);
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
+	ipc4_copier->copier_config = (uint32_t *)&ipc4_copier->gtw_attr;
+	ipc4_copier->copier.gtw_cfg.config_length = sizeof(struct sof_ipc4_gtw_attributes) >> 2;
 
 	/* set up module info and message header */
 	ret = sof_ipc4_widget_setup_msg(swidget, &ipc4_copier->msg);
@@ -467,6 +469,8 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 	dev_dbg(scomp->dev, "dai %s node_type %u\n", swidget->widget->name, node_type);
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
+	ipc4_copier->copier_config = (uint32_t *)&ipc4_copier->gtw_attr;
+	ipc4_copier->copier.gtw_cfg.config_length = sizeof(struct sof_ipc4_gtw_attributes) >> 2;
 
 	dai->scomp = scomp;
 	dai->private = ipc4_copier;
@@ -903,6 +907,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 		struct sof_ipc4_gtw_attributes *gtw_attr;
 
 		ipc4_copier = (struct sof_ipc4_copier *)swidget->private;
+		gtw_attr = &ipc4_copier->gtw_attr;
 		copier = &ipc4_copier->copier;
 		available_fmt = &ipc4_copier->available_fmt;
 
@@ -922,13 +927,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(params->stream_tag - 1);
 
 		/* set gateway attributes */
-		gtw_attr = devm_kzalloc(sdev->dev, sizeof(*gtw_attr), GFP_KERNEL);
-		if (!gtw_attr)
-			return -ENOMEM;
-
 		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
-		copier->gtw_cfg.config_length = sizeof(*gtw_attr) >> 2;
-		ipc4_copier->copier_config = (uint32_t *)gtw_attr;
 		break;
 	}
 	case snd_soc_dapm_dai_in:
@@ -1020,13 +1019,9 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	case SOF_DAI_INTEL_HDA:
 		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
 
-		gtw_attr = devm_kzalloc(sdev->dev, sizeof(*gtw_attr), GFP_KERNEL);
-		if (!gtw_attr)
-			return -ENOMEM;
+		gtw_attr = &ipc4_copier->gtw_attr;
 
 		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
-		copier->gtw_cfg.config_length = sizeof(*gtw_attr) >> 2;
-		ipc4_copier->copier_config = (uint32_t *)gtw_attr;
 		break;
 	case SOF_DAI_INTEL_ALH:
 		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);

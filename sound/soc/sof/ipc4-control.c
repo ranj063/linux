@@ -55,7 +55,6 @@ sof_ipc4_set_volume_data(struct snd_sof_dev *sdev, struct snd_sof_widget *swidge
 	struct sof_ipc4_gain *gain = swidget->private;
 	struct sof_ipc4_msg *msg = &cdata->msg;
 	struct sof_ipc4_gain_data data;
-	unsigned int channels = scontrol->num_channels;
 	bool all_channels_equal = true;
 	u32 value;
 	int ret, i;
@@ -186,7 +185,6 @@ static int sof_ipc4_widget_kcontrol_setup(struct snd_sof_dev *sdev, struct snd_s
 static int
 sof_ipc4_set_up_volume_table(struct snd_sof_control *scontrol, int tlv[SOF_TLV_ITEMS], int size)
 {
-	struct snd_soc_component *scomp = scontrol->scomp;
 	int i;
 
 	/* init the volume table */

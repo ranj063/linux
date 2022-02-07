@@ -10,6 +10,7 @@
 #define __INCLUDE_SOUND_SOF_IPC4_TOPOLOGY_H__
 
 #include <sound/sof/ipc4/header.h>
+#include "ipc4-priv.h"
 
 #define SOF_IPC4_NODE_INDEX(x)	((x) & 0xff)
 #define SOF_IPC4_NODE_TYPE(x)  ((x) << 8)
@@ -117,6 +118,7 @@ struct sof_ipc4_copier {
 	struct sof_ipc4_available_audio_format available_fmt;
 	u32 frame_fmt;
 	struct sof_ipc4_msg msg;
+	struct sof_ipc4_gtw_attributes gtw_attr;
 };
 
 /**
