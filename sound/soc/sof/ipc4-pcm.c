@@ -114,33 +114,6 @@ set:
 	return 0;
 }
 
-static int sof_ipc4_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
-				       struct snd_pcm_hw_params *params)
-{
-	struct snd_soc_component *component = snd_soc_rtdcom_lookup(rtd, SOF_AUDIO_PCM_DRV_NAME);
-	struct snd_sof_dai *dai = snd_sof_find_dai(component, (char *)rtd->dai_link->name);
-	struct sof_ipc4_copier *copier = dai->private;
-	struct snd_mask *fmt = hw_param_mask(params, SNDRV_PCM_HW_PARAM_FORMAT);
-
-	switch (copier->frame_fmt) {
-	case SOF_IPC_FRAME_S16_LE:
-		snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S16_LE);
-		break;
-	case SOF_IPC_FRAME_S24_4LE:
-		snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S24_LE);
-		break;
-	case SOF_IPC_FRAME_S32_LE:
-		snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S32_LE);
-		break;
-	default:
-		dev_err(component->dev, "No available DAI format!\n");
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
 const struct ipc_pcm_ops ipc4_pcm_ops = {
 	.trigger = sof_ipc4_pcm_trigger,
-	.dai_link_fixup = sof_ipc4_pcm_dai_link_fixup,
 };
