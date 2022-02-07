@@ -300,9 +300,9 @@ static void sof_ipc4_widget_free_comp(struct snd_sof_widget *swidget)
 	kfree(swidget->private);
 }
 
-static int sof_ipc4_widget_set_module_info(struct snd_soc_component *scomp,
-					   struct snd_sof_widget *swidget)
+static int sof_ipc4_widget_set_module_info(struct snd_sof_widget *swidget)
 {
+	struct snd_soc_component *scomp = swidget->scomp;
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct sof_ipc4_fw_module *fw_modules = sdev->fw_modules;
 	int i;
@@ -323,11 +323,32 @@ static int sof_ipc4_widget_set_module_info(struct snd_soc_component *scomp,
 	return -EINVAL;
 }
 
+static int sof_ipc4_widget_setup_msg(struct snd_sof_widget *swidget, struct sof_ipc4_msg *msg)
+{
+	struct sof_ipc4_fw_module *fw_module;
+	int ret;
+
+	ret = sof_ipc4_widget_set_module_info(swidget);
+	if (ret < 0)
+		return ret;
+
+	fw_module = swidget->module_info;
+
+	msg->primary = fw_module->man4_module_entry.id;
+	msg->primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
+	msg->primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	msg->primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+
+	msg->extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
+	msg->extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
+
+	return 0;
+}
+
 static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 {
 	struct sof_ipc4_available_audio_format *available_fmt;
 	struct snd_soc_component *scomp = swidget->scomp;
-	struct sof_ipc4_fw_module *fw_module;
 	struct sof_ipc4_copier *ipc4_copier;
 	int node_type = 0;
 	int ret, i;
@@ -377,21 +398,10 @@ static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 	}
 	dev_dbg(scomp->dev, "host copier %s node_type %u\n", swidget->widget->name, node_type);
 
-	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
-
-	ret = sof_ipc4_widget_set_module_info(scomp, swidget);
+	/* set up module info and message header */
+	ret = sof_ipc4_widget_setup_msg(swidget, &ipc4_copier->msg);
 	if (ret < 0)
 		goto err;
-
-	fw_module = swidget->module_info;
-
-	ipc4_copier->msg.primary = fw_module->man4_module_entry.id;
-	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
-	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
-	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
-
-	ipc4_copier->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
-	ipc4_copier->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
 
 	return 0;
 
@@ -407,7 +417,6 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 	struct sof_ipc4_available_audio_format *available_fmt;
 	struct snd_soc_component *scomp = swidget->scomp;
 	struct snd_sof_dai *dai = swidget->private;
-	struct sof_ipc4_fw_module *fw_module;
 	struct sof_ipc4_copier *ipc4_copier;
 	int node_type = 0;
 	int ret, i;
@@ -458,21 +467,12 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 
 	dai->scomp = scomp;
-
 	dai->private = ipc4_copier;
-	ret = sof_ipc4_widget_set_module_info(scomp, swidget);
+
+	/* set up module info and message header */
+	ret = sof_ipc4_widget_setup_msg(swidget, &ipc4_copier->msg);
 	if (ret < 0)
 		goto err;
-
-	fw_module = swidget->module_info;
-
-	ipc4_copier->msg.primary = fw_module->man4_module_entry.id;
-	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
-	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
-	ipc4_copier->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
-
-	ipc4_copier->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
-	ipc4_copier->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
 
 	return 0;
 err:
@@ -559,19 +559,11 @@ static int sof_ipc4_widget_setup_comp_pga(struct snd_sof_widget *swidget)
 		swidget->widget->name, gain->data.curve_type, gain->data.curve_duration,
 		gain->data.init_val, gain->base_config.cpc);
 
-	ret = sof_ipc4_widget_set_module_info(scomp, swidget);
+	ret = sof_ipc4_widget_setup_msg(swidget, &gain->msg);
 	if (ret < 0)
 		goto err;
 
 	fw_module = swidget->module_info;
-
-	gain->msg.primary = fw_module->man4_module_entry.id;
-	gain->msg.primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_MOD_INIT_INSTANCE);
-	gain->msg.primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
-	gain->msg.primary |= SOF_IPC4_GLB_MSG_TARGET(SOF_IPC4_MODULE_MSG);
-
-	gain->msg.extension = SOF_IPC4_MOD_EXT_PPL_ID(swidget->pipeline_id);
-	gain->msg.extension |= SOF_IPC4_MOD_EXT_CORE_ID(swidget->core);
 
 	/* update module ID for all kcontrols for this widget */
 	list_for_each_entry(scontrol, &sdev->kcontrol_list, list)
@@ -614,7 +606,11 @@ static int sof_ipc4_widget_setup_comp_mixer(struct snd_sof_widget *swidget)
 
 	dev_dbg(scomp->dev, "mixer type %d", mixer->type);
 
-	return sof_ipc4_widget_set_module_info(scomp, swidget);
+	ret = sof_ipc4_widget_setup_msg(swidget, &mixer->msg);
+	if (ret < 0)
+		goto err;
+
+	return 0;
 err:
 	kfree(mixer);
 	return ret;

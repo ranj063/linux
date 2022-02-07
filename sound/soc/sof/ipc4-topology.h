@@ -158,6 +158,7 @@ struct sof_ipc4_mixer {
 	struct sof_ipc4_base_module_cfg base_config;
 	enum sof_ipc4_mixer_type type;
 	struct sof_ipc4_available_audio_format available_fmt;
+	struct sof_ipc4_msg msg;
 };
 
 void sof_ipc4_dbg_audio_format(struct device *dev, struct sof_ipc4_audio_format *format,
