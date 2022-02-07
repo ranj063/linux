@@ -586,6 +586,8 @@ static int sof_ipc4_widget_setup_comp_mixer(struct snd_sof_widget *swidget)
 	struct sof_ipc4_mixer *mixer;
 	int ret;
 
+	dev_dbg(scomp->dev, "Updating IPC structures for %s\n", swidget->widget->name);
+
 	mixer = kzalloc(sizeof(*mixer), GFP_KERNEL);
 	if (!mixer)
 		return -ENOMEM;
@@ -597,7 +599,7 @@ static int sof_ipc4_widget_setup_comp_mixer(struct snd_sof_widget *swidget)
 	if (ret != 0)
 		goto err;
 
-	ret = sof_update_ipc_object(scomp, &mixer, SOF_IPC4_MIXER_TOKENS, swidget->tuples,
+	ret = sof_update_ipc_object(scomp, mixer, SOF_IPC4_MIXER_TOKENS, swidget->tuples,
 				    swidget->num_tuples, sizeof(*mixer), 1);
 	if (ret != 0) {
 		dev_err(scomp->dev, "parse mixer tokens failed\n");
@@ -753,6 +755,11 @@ static int sof_ipc4_init_audio_fmt(struct snd_sof_dev *sdev,
 		__func__, params->rate, params->channels,
 		params->sample_valid_bytes, params->direction);
 
+	if (!available_fmt->audio_fmt_num) {
+		dev_err(sdev->dev, "no formats avaialble for %s\n", swidget->widget->name);
+		return -EINVAL;
+	}
+
 	/*
 	 * Search supported audio formats to match rate, channels ,and
 	 * sample_valid_bytes from runtime params
@@ -812,7 +819,7 @@ static int sof_ipc4_prepare_gain_module(struct snd_sof_widget *swidget,
 	memcpy(local_params, params, sizeof(*params));
 
 	if (params->frame_fmt == SOF_IPC_FRAME_S24_4LE)
-		params->sample_valid_bytes = 4;
+		local_params->sample_valid_bytes = 4;
 
 	gain->available_fmt.ref_audio_fmt = &gain->available_fmt.base_config->audio_fmt;
 
@@ -837,7 +844,7 @@ static int sof_ipc4_prepare_mixer_module(struct snd_sof_widget *swidget,
 	struct snd_sof_platform_stream_params *local_params;
 	struct snd_soc_component *scomp = swidget->scomp;
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
-	struct sof_ipc4_gain *mixer = swidget->private;
+	struct sof_ipc4_mixer *mixer = swidget->private;
 	int ret;
 
 	local_params =  kzalloc(sizeof(*local_params), GFP_KERNEL);
@@ -847,11 +854,11 @@ static int sof_ipc4_prepare_mixer_module(struct snd_sof_widget *swidget,
 	memcpy(local_params, params, sizeof(*params));
 
 	/* only 32bit is supported by mixer */
-	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
-	params->sample_valid_bytes = 4;
+	local_params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+	local_params->sample_valid_bytes = 4;
 	mixer->available_fmt.ref_audio_fmt = &mixer->available_fmt.base_config->audio_fmt;
 
-	/* output format is not required to be sent to the FW for gain */
+	/* output format is not required to be sent to the FW for mixer */
 	ret = sof_ipc4_init_audio_fmt(sdev, swidget, &mixer->base_config,
 				      NULL, local_params, &mixer->available_fmt,
 				      sizeof(mixer->base_config));
