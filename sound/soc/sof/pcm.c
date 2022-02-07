@@ -380,9 +380,11 @@ static int sof_pcm_trigger(struct snd_soc_component *component,
 		snd_sof_pcm_platform_trigger(sdev, substream, cmd);
 
 	/* free PCM if reset_hw_params is set and the STOP IPC is successful */
-	if (!ret && reset_hw_params)
+	if (!ret && reset_hw_params) {
+		dev_dbg(sdev->dev, "ranjani freeing pcm\n");
 		ret = sof_pcm_stream_free(sdev, substream, spcm, substream->stream,
 					  free_widget_list);
+	}
 
 	return ret;
 }
