@@ -831,6 +831,41 @@ static int sof_ipc4_prepare_gain_module(struct snd_sof_widget *swidget,
 	return sof_ipc4_widget_assign_instance_id(sdev, swidget);
 }
 
+static int sof_ipc4_prepare_mixer_module(struct snd_sof_widget *swidget,
+					 struct snd_sof_platform_stream_params *params)
+{
+	struct snd_sof_platform_stream_params *local_params;
+	struct snd_soc_component *scomp = swidget->scomp;
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
+	struct sof_ipc4_gain *mixer = swidget->private;
+	int ret;
+
+	local_params =  kzalloc(sizeof(*local_params), GFP_KERNEL);
+	if (!local_params)
+		return -ENOMEM;
+
+	memcpy(local_params, params, sizeof(*params));
+
+	/* only 32bit is supported by mixer */
+	params->frame_fmt = SOF_IPC_FRAME_S32_LE;
+	params->sample_valid_bytes = 4;
+	mixer->available_fmt.ref_audio_fmt = &mixer->available_fmt.base_config->audio_fmt;
+
+	/* output format is not required to be sent to the FW for gain */
+	ret = sof_ipc4_init_audio_fmt(sdev, swidget, &mixer->base_config,
+				      NULL, local_params, &mixer->available_fmt,
+				      sizeof(mixer->base_config));
+	kfree(local_params);
+	if (ret < 0)
+		return ret;
+
+	/* update pipeline memory usage */
+	sof_ipc4_update_pipeline_mem_usage(sdev, swidget, &mixer->base_config);
+
+	/* assign instance ID */
+	return sof_ipc4_widget_assign_instance_id(sdev, swidget);
+}
+
 static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 					  struct snd_sof_platform_stream_params *params)
 {
@@ -1075,6 +1110,23 @@ static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 		msg->extension |= SOF_IPC4_MOD_EXT_DOMAIN(pipeline->lp_mode);
 		break;
 	}
+	case snd_soc_dapm_mixer:
+	{
+		struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
+		struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
+		struct sof_ipc4_mixer *mixer = swidget->private;
+
+		ipc_size = sizeof(mixer->base_config);
+		ipc_data = &mixer->base_config;
+
+		msg = &mixer->msg;
+		msg->primary &= ~SOF_IPC4_MOD_INSTANCE_MASK;
+		msg->primary |= SOF_IPC4_MOD_INSTANCE(swidget->instance_id);
+
+		msg->extension |= ipc_size >> 2;
+		msg->extension |= SOF_IPC4_MOD_EXT_DOMAIN(pipeline->lp_mode);
+		break;
+	}
 	default:
 		dev_err(sdev->dev, "widget type %d not supported", swidget->id);
 		return -EINVAL;
@@ -1273,7 +1325,7 @@ static const struct ipc_tplg_widget_ops tplg_ipc4_widget_ops[SND_SOC_DAPM_TYPE_C
 				  sof_ipc4_prepare_copier_module},
 	[snd_soc_dapm_mixer] = {sof_ipc4_widget_setup_comp_mixer, sof_ipc4_widget_free_comp,
 				mixer_token_list, ARRAY_SIZE(mixer_token_list),
-				NULL, NULL},
+				NULL, sof_ipc4_prepare_mixer_module},
 	[snd_soc_dapm_scheduler] = {sof_ipc4_widget_setup_comp_pipeline, sof_ipc4_widget_free_comp,
 				    pipeline_token_list, ARRAY_SIZE(pipeline_token_list), NULL,
 				    NULL},

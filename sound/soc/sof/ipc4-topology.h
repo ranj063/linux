@@ -153,6 +153,7 @@ enum sof_ipc4_mixer_type {
  * @base_config: IPC base config data
  * @type: mixer type (in or out)
  * @available_fmt: Available audio format
+ * @msg: IPC4 message struct containing header and data info
  */
 struct sof_ipc4_mixer {
 	struct sof_ipc4_base_module_cfg base_config;
