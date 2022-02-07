@@ -105,11 +105,6 @@ static const struct sof_topology_token ipc4_copier_tokens[] = {
 	{SOF_TKN_INTEL_COPIER_NODE_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32, 0},
 };
 
-static const struct sof_topology_token ipc4_copier_format_tokens[] = {
-	{SOF_TKN_COMP_FORMAT, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_comp_format,
-		offsetof(struct sof_ipc4_copier, frame_fmt)},
-};
-
 static const struct sof_topology_token ipc4_audio_fmt_num_tokens[] = {
 	{SOF_TKN_COMP_NUM_AUDIO_FORMATS, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		0},
@@ -163,8 +158,6 @@ static const struct sof_token_info ipc4_token_list[SOF_TOKEN_COUNT] = {
 		ipc4_copier_gateway_cfg_tokens, ARRAY_SIZE(ipc4_copier_gateway_cfg_tokens)},
 	[SOF_IPC4_COPIER_TOKENS] = {"IPC4 Cpoier tokens", ipc4_copier_tokens,
 		ARRAY_SIZE(ipc4_copier_tokens)},
-	[SOF_IPC4_COPIER_FORMAT_TOKENS] = {"IPC4 Cpoier tokens", ipc4_copier_format_tokens,
-		ARRAY_SIZE(ipc4_copier_format_tokens)},
 	[SOF_IPC4_AUDIO_FMT_NUM_TOKENS] = {"IPC4 Audio format number tokens",
 		ipc4_audio_fmt_num_tokens, ARRAY_SIZE(ipc4_audio_fmt_num_tokens)},
 };
@@ -460,16 +453,7 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 		goto err;
 	}
 
-	ret = sof_update_ipc_object(scomp, ipc4_copier,
-				    SOF_IPC4_COPIER_FORMAT_TOKENS, swidget->tuples,
-				    swidget->num_tuples, sizeof(*ipc4_copier), 1);
-	if (ret != 0) {
-		dev_err(scomp->dev, "parse dai copier format token failed %d\n", ret);
-		goto err;
-	}
-
-	dev_dbg(scomp->dev, "dai %s node_type %u format %d\n", swidget->widget->name, node_type,
-		ipc4_copier->frame_fmt);
+	dev_dbg(scomp->dev, "dai %s node_type %u\n", swidget->widget->name, node_type);
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 
@@ -1275,7 +1259,6 @@ static enum sof_tokens dai_token_list[] = {
 	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
-	SOF_IPC4_COPIER_FORMAT_TOKENS,
 	SOF_COMP_EXT_TOKENS,
 };
 
