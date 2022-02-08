@@ -63,8 +63,7 @@ static const struct sof_topology_token ipc4_audio_format_buffer_size_tokens[] = 
 };
 
 static const struct sof_topology_token ipc4_mixer_tokens[] = {
-	{SOF_TKN_MIXER_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc4_mixer, type)},
+	{SOF_TKN_MIXER_TYPE, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32, 0},
 };
 
 static const struct sof_topology_token ipc4_in_audio_format_tokens[] = {
@@ -605,8 +604,9 @@ static int sof_ipc4_widget_setup_comp_mixer(struct snd_sof_widget *swidget)
 	if (ret != 0)
 		goto err;
 
-	ret = sof_update_ipc_object(scomp, mixer, SOF_IPC4_MIXER_TOKENS, swidget->tuples,
-				    swidget->num_tuples, sizeof(*mixer), 1);
+	ret = sof_update_ipc_object(scomp, &mixer->type, SOF_IPC4_MIXER_TOKENS,
+				    swidget->tuples, swidget->num_tuples,
+				    sizeof(*mixer), 1);
 	if (ret != 0) {
 		dev_err(scomp->dev, "parse mixer tokens failed\n");
 		goto err;
