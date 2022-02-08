@@ -767,4 +767,8 @@ extern int sof_hda_position_quirk;
 int hda_dsp_cl_boot_firmware_skl(struct snd_sof_dev *sdev);
 int hda_dsp_core_stall_reset(struct snd_sof_dev *sdev, unsigned int core_mask);
 
+/* IPC4 */
+int cnl_ipc4_send_msg(struct snd_sof_dev *sdev, struct snd_sof_ipc_msg *msg);
+irqreturn_t cnl_ipc4_irq_thread(int irq, void *context);
+
 #endif
