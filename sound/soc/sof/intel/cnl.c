@@ -71,27 +71,29 @@ irqreturn_t cnl_ipc4_irq_thread(int irq, void *context)
 
 	/* new message from DSP */
 	if (hipctdr & CNL_DSP_REG_HIPCTDR_BUSY) {
-		struct sof_ipc4_msg data;
-
 		msg = hipctdr & CNL_DSP_REG_HIPCTDR_MSG_MASK;
 		msg_ext = hipctdd & CNL_DSP_REG_HIPCTDD_MSG_MASK;
 
 		dev_vdbg(sdev->dev, "ipc: firmware initiated, msg:0x%x, msg_ext:0x%x\n",
 			 msg, msg_ext);
 
-		data.primary = msg;
-		data.extension = msg_ext;
-
 		if (hipctdr & SOF_IPC4_GLB_MSG_DIR_MASK) {
-			sdev->ipc->msg.reply_data = &data;
+			struct sof_ipc4_msg *data = sdev->ipc->msg.reply_data;
+
+			data->primary = msg;
+			data->extension = msg_ext;
 			snd_sof_ipc_get_reply(sdev);
 			snd_sof_ipc_reply(sdev, msg);
 		} else {
+			struct sof_ipc4_msg data = {{ 0 }};
+
+			data.primary = msg;
+			data.extension = msg_ext;
+
 			sdev->ipc->msg.rx_data = &data;
 			snd_sof_ipc_msgs_rx(sdev);
+			sdev->ipc->msg.rx_data = NULL;
 		}
-
-		sdev->ipc->msg.rx_data = NULL;
 
 		cnl_ipc_host_done(sdev);
 
