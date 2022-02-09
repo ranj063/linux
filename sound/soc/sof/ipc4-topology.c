@@ -112,19 +112,9 @@ static const struct sof_topology_token ipc4_audio_fmt_num_tokens[] = {
 /* DAI */
 static const struct sof_topology_token dai_tokens[] = {
 	{SOF_TKN_DAI_TYPE, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_dai_type,
-		offsetof(struct sof_ipc_comp_dai, type)},
+		offsetof(struct sof_ipc4_copier, dai_type)},
 	{SOF_TKN_DAI_INDEX, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_comp_dai, dai_index)},
-	{SOF_TKN_DAI_DIRECTION, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_comp_dai, direction)},
-};
-
-/* BE DAI link */
-static const struct sof_topology_token dai_link_tokens[] = {
-	{SOF_TKN_DAI_TYPE, SND_SOC_TPLG_TUPLE_TYPE_STRING, get_token_dai_type,
-		offsetof(struct sof_ipc_dai_config, type)},
-	{SOF_TKN_DAI_INDEX, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
-		offsetof(struct sof_ipc_dai_config, dai_index)},
+		offsetof(struct sof_ipc4_copier, dai_index)},
 };
 
 /* Component extended tokens */
@@ -135,7 +125,6 @@ static const struct sof_topology_token comp_ext_tokens[] = {
 
 static const struct sof_token_info ipc4_token_list[SOF_TOKEN_COUNT] = {
 	[SOF_DAI_TOKENS] = {"DAI tokens", dai_tokens, ARRAY_SIZE(dai_tokens)},
-	[SOF_DAI_LINK_TOKENS] = {"DAI link tokens", dai_link_tokens, ARRAY_SIZE(dai_link_tokens)},
 	[SOF_PIPELINE_TOKENS] = {"Pipeline tokens", pipeline_tokens, ARRAY_SIZE(pipeline_tokens)},
 	[SOF_SCHED_TOKENS] = {"Scheduler tokens", ipc4_sched_tokens,
 		ARRAY_SIZE(ipc4_sched_tokens)},
@@ -465,7 +454,16 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 		goto err;
 	}
 
-	dev_dbg(scomp->dev, "dai %s node_type %u\n", swidget->widget->name, node_type);
+	ret = sof_update_ipc_object(scomp, ipc4_copier,
+				    SOF_DAI_TOKENS, swidget->tuples,
+				    swidget->num_tuples, sizeof(u32), 1);
+	if (ret != 0) {
+		dev_err(scomp->dev, "parse dai copier node token failed %d\n", ret);
+		goto err;
+	}
+
+	dev_dbg(scomp->dev, "dai %s node_type %u dai_type %u dai_index %d\n", swidget->widget->name,
+		node_type, ipc4_copier->dai_type, ipc4_copier->dai_index);
 
 	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 	ipc4_copier->copier_config = (uint32_t *)&ipc4_copier->gtw_attr;
@@ -945,6 +943,8 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 			available_fmt->ref_audio_fmt = &available_fmt->base_config->audio_fmt;
 			ref_audio_fmt_size = sizeof(struct sof_ipc4_base_module_cfg);
 		}
+
+		/*TODO: For Jaska, use ipc4_copier->dai_type to add blobs for SSP/DMIC */
 		break;
 	}
 	default:
@@ -1311,6 +1311,7 @@ static enum sof_tokens dai_token_list[] = {
 	SOF_IPC4_OUT_AUDIO_FORMAT_TOKENS,
 	SOF_IPC4_COPIER_GATEWAY_CFG_TOKENS,
 	SOF_IPC4_COPIER_TOKENS,
+	SOF_DAI_TOKENS,
 	SOF_COMP_EXT_TOKENS,
 };
 

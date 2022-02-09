@@ -119,6 +119,8 @@ struct sof_ipc4_copier {
 	u32 frame_fmt;
 	struct sof_ipc4_msg msg;
 	struct sof_ipc4_gtw_attributes gtw_attr;
+	u32 dai_type;
+	int dai_index;
 };
 
 /**

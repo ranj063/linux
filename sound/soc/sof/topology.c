@@ -1708,7 +1708,7 @@ static int sof_link_load(struct snd_soc_component *scomp, int index, struct snd_
 	}
 
 	/* for DMIC, also parse all sets of DMIC PDM tokens based on active PDM count */
-	if (token_id == SOF_DMIC_TOKENS) {
+	if (token_id == SOF_DMIC_TOKENS && token_list[token_id].tokens) {
 		num_sets = sof_get_token_value(SOF_TKN_INTEL_DMIC_NUM_PDM_ACTIVE,
 					       slink->tuples, slink->num_tuples);
 
