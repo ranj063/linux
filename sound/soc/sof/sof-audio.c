@@ -131,10 +131,16 @@ int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 	}
 
 	/* send config for DAI components */
-	if (WIDGET_IS_DAI(swidget->id) && tplg_ops->dai_config_ipc) {
-		ret = tplg_ops->dai_config_ipc(sdev, swidget);
-		if (ret < 0)
-			goto widget_free;
+	if (WIDGET_IS_DAI(swidget->id)) {
+		struct snd_sof_dai *dai = swidget->private;
+		unsigned int flags = SOF_DAI_CONFIG_FLAGS_NONE;
+
+		dai->configured = false;
+		if (tplg_ops->dai_config) {
+			ret = tplg_ops->dai_config(sdev, swidget, flags, NULL);
+			if (ret < 0)
+				goto widget_free;
+		}
 	}
 
 	/* restore kcontrols for widget */

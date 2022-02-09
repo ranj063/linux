@@ -74,13 +74,6 @@ int hda_ctrl_dai_widget_setup(struct snd_soc_dapm_widget *w, unsigned int quirk_
 		sof_dai->configured = true;
 	}
 
-	/*
-	 * No need to send the DAI CONFIG IPC for dynamic pipelines. They will be sent when the
-	 *  DAI widget is set up.
-	 */
-	if (!swidget->dynamic_pipeline_widget && tplg_ops->dai_config_ipc)
-		return tplg_ops->dai_config_ipc(sdev, swidget);
-
 	return 0;
 }
 
@@ -116,16 +109,13 @@ int hda_ctrl_dai_widget_free(struct snd_soc_dapm_widget *w, unsigned int quirk_f
 				w->name);
 	}
 
+	/*
+	 * Reset the configured_flag and free the widget even if the IPC fails to keep
+	 * the widget use_count balanced
+	 */
 	sof_dai->configured = false;
 
-	/*
-	 * No need to send the DAI CONFIG IPC for dynamic pipelines. They will be sent when the
-	 *  DAI widget is set up.
-	 */
-	if (!swidget->dynamic_pipeline_widget && tplg_ops->dai_config_ipc)
-		return tplg_ops->dai_config_ipc(sdev, swidget);
-
-	return 0;
+	return sof_widget_free(sdev, swidget);
 }
 
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL_SOUNDWIRE)
