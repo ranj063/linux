@@ -314,6 +314,8 @@ static int sof_ipc4_get_reply(struct snd_sof_dev *sdev)
 	/* get the generic reply */
 	ipc4_reply = msg->reply_data;
 
+	sof_ipc4_log_header(sdev->dev, "ipc tx reply", ipc4_reply, false);
+
 	ret = sof_ipc4_check_reply_status(sdev, ipc4_reply->primary);
 	if (ret)
 		return ret;
