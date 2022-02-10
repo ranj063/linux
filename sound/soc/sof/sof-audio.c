@@ -304,11 +304,13 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 	swidget->complete = true;
 
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
-		if (p->sink->dobj.private) {
+		if (!p->walking && p->sink->dobj.private) {
+			p->walking = true;
 			ret = sof_prepare_widgets_in_path(sdev, p->sink, runtime_params,
 							  input_params);
 			if (ret < 0)
 				return ret;
+			p->walking = false;
 		}
 	}
 
@@ -359,40 +361,42 @@ out:
 
 /*
  * free all widgets in the sink path starting from the source widget
- * (DAI type for capture, AIF type for platback)
+ * (DAI type for capture, AIF type for playback)
  */
 static int sof_free_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *widget,
 				    int dir)
 {
 	struct snd_soc_dapm_path *p;
-	int ret;
-	int ret1 = 0;
+	int err;
+	int ret = 0;
 
 	/* free all widgets even in case of error to keep use counts balanced */
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
-		if (p->sink->dobj.private && widget->dobj.private) {
-			if (WIDGET_IS_AIF(widget->id) || WIDGET_IS_DAI(widget->id)) {
-				ret = sof_widget_free(sdev, widget->dobj.private);
-				if (ret < 0)
-					ret1 = ret;
+		if (!p->walking && p->sink->dobj.private && widget->dobj.private) {
+			p->walking = true;
+			if (WIDGET_IS_AIF_OR_DAI(widget->id)) {
+				err = sof_widget_free(sdev, widget->dobj.private);
+				if (err < 0)
+					ret = err;
 			}
 
-			ret = sof_widget_free(sdev, p->sink->dobj.private);
-			if (ret < 0)
-				ret1 = ret;
+			err = sof_widget_free(sdev, p->sink->dobj.private);
+			if (err < 0)
+				ret = err;
 
-			ret = sof_free_widgets_in_path(sdev, p->sink, dir);
-			if (ret < 0)
-				ret1 = ret;
+			err = sof_free_widgets_in_path(sdev, p->sink, dir);
+			if (err < 0)
+				ret = err;
+			p->walking = false;
 		}
 	}
 
-	return ret1;
+	return ret;
 }
 
 /*
  * set up all widgets in the sink path starting from the source widget
- * (DAI type for capture, AIF type for platback).
+ * (DAI type for capture, AIF type for playback).
  * The error path in this function ensures that all successfully set up widgets getting freed.
  */
 static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *widget,
@@ -402,8 +406,9 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 	int ret;
 
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
-		if (p->sink->dobj.private && widget->dobj.private) {
-			if (WIDGET_IS_AIF(widget->id) || WIDGET_IS_DAI(widget->id)) {
+		if (!p->walking && p->sink->dobj.private && widget->dobj.private) {
+			p->walking = true;
+			if (WIDGET_IS_AIF_OR_DAI(widget->id)) {
 				ret = sof_widget_setup(sdev, widget->dobj.private);
 				if (ret < 0)
 					return ret;
@@ -411,17 +416,19 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 
 			ret = sof_widget_setup(sdev, p->sink->dobj.private);
 			if (ret < 0) {
-				sof_widget_free(sdev, widget->dobj.private);
+				if (WIDGET_IS_AIF_OR_DAI(widget->id))
+					sof_widget_free(sdev, widget->dobj.private);
 				return ret;
 			}
 
 			ret = sof_set_up_widgets_in_path(sdev, p->sink, dir);
 			if (ret < 0) {
-				if (WIDGET_IS_AIF(widget->id) || WIDGET_IS_DAI(widget->id))
+				if (WIDGET_IS_AIF_OR_DAI(widget->id))
 					sof_widget_free(sdev, widget->dobj.private);
 				sof_widget_free(sdev, p->sink->dobj.private);
 				return ret;
 			}
+			p->walking = false;
 		}
 	}
 
@@ -430,30 +437,35 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 
 static int
 sof_setup_or_free_widgets_in_order(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget_list *list,
-				   bool dir, bool setup)
+				   bool dir, enum sof_widget_op op)
 {
 	struct snd_soc_dapm_widget *widget;
 	int ret, i;
 
 	for_each_dapm_widgets(list, i, widget) {
+		/* starting widget for playback is AIF type */
 		if (dir == SNDRV_PCM_STREAM_PLAYBACK && !WIDGET_IS_AIF(widget->id))
 			continue;
 
+		/* starting widget for capture is DAI type */
 		if (dir == SNDRV_PCM_STREAM_CAPTURE && !WIDGET_IS_DAI(widget->id))
 			continue;
 
-		if (setup) {
+		switch (op) {
+		case SOF_WIDGET_SETUP:
 			ret = sof_set_up_widgets_in_path(sdev, widget, dir);
-			if (ret < 0) {
-				dev_err(sdev->dev, "Failed to set up connected widgets\n");
-				return ret;
-			}
-		} else {
+			break;
+		case SOF_WIDGET_FREE:
 			ret = sof_free_widgets_in_path(sdev, widget, dir);
-			if (ret < 0) {
-				dev_err(sdev->dev, "Failed to free connected widgets\n");
-				return ret;
-			}
+			break;
+		default:
+			dev_err(sdev->dev, "Invalid widget op %d\n", op);
+			return -EINVAL;
+		}
+		if (ret < 0) {
+			dev_err(sdev->dev, "Failed to %s connected widgets\n",
+				SOF_WIDGET_SETUP ? "set up" : "free");
+			return ret;
 		}
 	}
 
@@ -471,7 +483,7 @@ int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, in
 	if (!list)
 		return 0;
 
-	ret = sof_setup_or_free_widgets_in_order(sdev, list, dir, true);
+	ret = sof_setup_or_free_widgets_in_order(sdev, list, dir, SOF_WIDGET_SETUP);
 	if (ret < 0)
 		return ret;
 
@@ -514,7 +526,7 @@ int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, in
 	return 0;
 
 widget_free:
-	sof_setup_or_free_widgets_in_order(sdev, list, dir, false);
+	sof_setup_or_free_widgets_in_order(sdev, list, dir, SOF_WIDGET_FREE);
 
 	return ret;
 }
@@ -528,7 +540,7 @@ int sof_widget_list_free(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm, int
 	if (!list)
 		return 0;
 
-	ret = sof_setup_or_free_widgets_in_order(sdev, list, dir, false);
+	ret = sof_setup_or_free_widgets_in_order(sdev, list, dir, SOF_WIDGET_FREE);
 
 	snd_soc_dapm_dai_free_widgets(&list);
 	spcm->stream[dir].list = NULL;
