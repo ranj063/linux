@@ -672,6 +672,30 @@ static int sof_ipc4_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget 
 		pipeline->mem_usage = 0;
 		break;
 	}
+	case snd_soc_dapm_aif_in:
+	case snd_soc_dapm_aif_out:
+	case snd_soc_dapm_dai_in:
+	case snd_soc_dapm_dai_out:
+	{
+		struct sof_ipc4_copier *ipc4_copier;
+
+		if (swidget->id == snd_soc_dapm_aif_in ||
+		    swidget->id == snd_soc_dapm_aif_out) {
+			ipc4_copier = swidget->private;
+		} else {
+			struct snd_sof_dai *dai = swidget->private;
+			ipc4_copier = dai->private;
+		}
+
+		if (ipc4_copier->ipc_config_data) {
+			kfree(ipc4_copier->ipc_config_data);
+			ipc4_copier->ipc_config_data = NULL;
+			ipc4_copier->ipc_config_size = 0;
+			dev_vdbg(sdev->dev, "copier %s ipc_config_data freed\n",
+				 swidget->widget->name);
+		}
+	}
+	fallthrough;
 	default:
 		ida_free(&fw_module->m_ida, swidget->instance_id);
 		break;
@@ -961,7 +985,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 
 	dev_dbg(sdev->dev, "copier %s, IPC size is %d", swidget->widget->name, ipc_size);
 
-	*ipc_config_data = devm_kzalloc(sdev->dev, ipc_size, GFP_KERNEL);
+	*ipc_config_data = kzalloc(ipc_size, GFP_KERNEL);
 	if (!*ipc_config_data)
 		return -ENOMEM;
 
