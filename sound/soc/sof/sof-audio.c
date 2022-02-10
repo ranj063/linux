@@ -261,14 +261,50 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 	return 0;
 }
 
-int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
-			    struct snd_sof_platform_stream_params *params)
+static int
+sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *widget,
+			    struct snd_sof_platform_stream_params *runtime_params,
+			    struct snd_sof_platform_stream_params *input_params)
 {
 	const struct ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
 	const struct ipc_tplg_widget_ops *widget_ops = ipc_tplg_ops->widget;
-	struct snd_soc_dapm_widget_list *list = spcm->stream[params->direction].list;
+	struct snd_sof_widget *swidget = widget->dobj.private;
+	struct snd_soc_dapm_path *p;
+	int ret;
+
+	if (!widget_ops[widget->id].prepare)
+		return 0;
+
+	ret = widget_ops[widget->id].prepare(swidget, runtime_params, input_params);
+	if (ret < 0) {
+		dev_err(sdev->dev, "failed to prepare widget %s\n", widget->name);
+		return ret;
+	}
+
+	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
+		if (p->sink->dobj.private) {
+			ret = sof_prepare_widgets_in_path(sdev, p->sink, runtime_params,
+							  input_params);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
+	return ret;
+}
+
+int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
+			    struct snd_sof_platform_stream_params *runtime_params)
+{
+	struct snd_soc_dapm_widget_list *list = spcm->stream[runtime_params->direction].list;
+	struct snd_sof_platform_stream_params *input_params;
 	struct snd_soc_dapm_widget *widget;
-	int ret, i;
+	int ret = 0;
+	int i;
+
+	input_params = kmemdup(runtime_params, sizeof(*runtime_params), GFP_KERNEL);
+	if (!input_params)
+		return -ENOMEM;
 
 	/* nothing to prepare */
 	if (!list)
@@ -281,14 +317,22 @@ int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 		if (!swidget)
 			continue;
 
-		if (widget_ops[widget->id].prepare) {
-			ret = widget_ops[widget->id].prepare(swidget, params);
-			if (ret < 0)
-				return ret;
-		}
+		if (runtime_params->direction == SNDRV_PCM_STREAM_PLAYBACK &&
+		    !WIDGET_IS_AIF(widget->id))
+			continue;
+
+		if (runtime_params->direction == SNDRV_PCM_STREAM_CAPTURE &&
+		    !WIDGET_IS_DAI(widget->id))
+			continue;
+
+		ret = sof_prepare_widgets_in_path(sdev, widget, runtime_params, input_params);
+		if (ret < 0)
+			goto out;
 	}
 
-	return 0;
+out:
+	kfree(input_params);
+	return ret;
 }
 
 /*

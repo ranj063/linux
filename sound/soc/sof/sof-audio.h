@@ -136,7 +136,8 @@ struct ipc_tplg_widget_ops {
 	int (*bind_event)(struct snd_soc_component *scomp, struct snd_sof_widget *swidget,
 			  u16 event_type);
 	int (*prepare)(struct snd_sof_widget *swidget,
-		       struct snd_sof_platform_stream_params *params);
+		       struct snd_sof_platform_stream_params *runtime_params,
+		       struct snd_sof_platform_stream_params *input_params);
 };
 
 /**
