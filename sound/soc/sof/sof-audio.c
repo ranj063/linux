@@ -15,12 +15,26 @@
 static void sof_reset_route_setup_status(struct snd_sof_dev *sdev, struct snd_sof_widget *widget)
 {
 	const struct ipc_tplg_ops *tplg_ops = sdev->ipc->ops->tplg;
+	struct snd_sof_widget *route_endpoint_widget;
 	struct snd_sof_route *sroute;
 
 	list_for_each_entry(sroute, &sdev->route_list, list)
 		if (sroute->src_widget == widget || sroute->sink_widget == widget) {
+			if (sroute->src_widget == widget)
+				route_endpoint_widget = sroute->sink_widget;
+
+			if (sroute->sink_widget == widget)
+				route_endpoint_widget = sroute->src_widget;
+
+			/* only free the route if the other endpoint widget's use_count is 0 */
+			if (route_endpoint_widget->use_count) {
+				sroute->setup = false;
+				continue;
+			}
+
 			if (sroute->setup && tplg_ops->route_free)
 				tplg_ops->route_free(sdev, sroute);
+
 			sroute->setup = false;
 		}
 }
@@ -77,6 +91,8 @@ int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 
 	if (!err)
 		dev_dbg(sdev->dev, "widget %s freed\n", swidget->widget->name);
+
+	swidget->complete = false;
 
 	return err;
 }
@@ -210,6 +226,10 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 		return -EINVAL;
 	}
 
+	/* nothing to do if route is already set up */
+	if (sroute->setup)
+		return 0;
+
 	ret = ipc_tplg_ops->route_setup(sdev, sroute);
 	if (ret < 0)
 		return ret;
@@ -272,7 +292,7 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 	struct snd_soc_dapm_path *p;
 	int ret;
 
-	if (!widget_ops[widget->id].prepare)
+	if (!widget_ops[widget->id].prepare || swidget->complete)
 		return 0;
 
 	ret = widget_ops[widget->id].prepare(swidget, runtime_params, input_params);
@@ -280,6 +300,8 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 		dev_err(sdev->dev, "failed to prepare widget %s\n", widget->name);
 		return ret;
 	}
+
+	swidget->complete = true;
 
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 		if (p->sink->dobj.private) {

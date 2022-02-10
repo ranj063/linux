@@ -677,7 +677,6 @@ static int sof_ipc4_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget 
 		break;
 	}
 
-	swidget->complete = 0;
 	dev_dbg(sdev->dev, "widget %s instance %d freed\n", swidget->widget->name,
 		swidget->instance_id);
 
@@ -1170,13 +1169,14 @@ static int sof_ipc4_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *
 
 	ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
 	if (ret < 0)
-		dev_err(sdev->dev, "%s: failed to bind modules %s -> %s\n", __func__,
-			src_widget->widget->name, sink_widget->widget->name);
+		dev_err(sdev->dev, "%s: failed to bind modules %s instance %d -> %s instance %d\n",
+			__func__, src_widget->widget->name, src_widget->instance_id,
+			sink_widget->widget->name, sink_widget->instance_id);
 
 	return ret;
 }
 
-static void sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
+static int sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *sroute)
 {
 	struct snd_sof_widget *src_widget = sroute->src_widget;
 	struct snd_sof_widget *sink_widget = sroute->sink_widget;
@@ -1207,8 +1207,11 @@ static void sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *
 
 	ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
 	if (ret < 0)
-		dev_err(sdev->dev, "failed to unbind modules %s -> %s\n",
-			src_widget->widget->name, sink_widget->widget->name);
+		dev_err(sdev->dev, "failed to unbind modules %s instance %d -> %s instance %d\n",
+			src_widget->widget->name, src_widget->instance_id,
+			sink_widget->widget->name, sink_widget->instance_id);
+
+	return ret;
 }
 
 static int sof_ipc4_control_load_volume(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol)

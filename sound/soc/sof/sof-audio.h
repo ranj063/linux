@@ -162,7 +162,7 @@ struct ipc_tplg_ops {
 	const struct ipc_tplg_widget_ops *widget;
 	const struct ipc_tplg_control_ops *control;
 	int (*route_setup)(struct snd_sof_dev *sdev, struct snd_sof_route *sroute);
-	void (*route_free)(struct snd_sof_dev *sdev, struct snd_sof_route *sroute);
+	int (*route_free)(struct snd_sof_dev *sdev, struct snd_sof_route *sroute);
 	const struct sof_token_info *token_list;
 	int (*control_setup)(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol);
 	int (*control_free)(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol);
