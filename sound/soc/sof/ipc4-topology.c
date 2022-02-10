@@ -1151,8 +1151,8 @@ static int sof_ipc4_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *
 	u32 header, extension;
 	int ret;
 
-	dev_dbg(sdev->dev, "ipc4 bind module %d to module %d",
-		src_widget->instance_id, sink_widget->instance_id);
+	dev_dbg(sdev->dev, "%s: bind %s -> %s\n", __func__,
+		src_widget->widget->name, sink_widget->widget->name);
 
 	header = src_fw_module->man4_module_entry.id;
 	header |= SOF_IPC4_MOD_INSTANCE(src_widget->instance_id);
@@ -1170,9 +1170,8 @@ static int sof_ipc4_route_setup(struct snd_sof_dev *sdev, struct snd_sof_route *
 
 	ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
 	if (ret < 0)
-		dev_err(sdev->dev, "failed to bind module %s: %d to module %s: %d",
-			src_fw_module->man4_module_entry.name, src_widget->instance_id,
-			sink_fw_module->man4_module_entry.name, sink_widget->instance_id);
+		dev_err(sdev->dev, "%s: failed to bind modules %s -> %s\n", __func__,
+			src_widget->widget->name, sink_widget->widget->name);
 
 	return ret;
 }
@@ -1189,8 +1188,8 @@ static void sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *
 	u32 header, extension;
 	int ret;
 
-	dev_dbg(sdev->dev, "ipc4 unbind module %d and module %d",
-		src_widget->instance_id, sink_widget->instance_id);
+	dev_dbg(sdev->dev, "%s: unbind modules %s -> %s\n", __func__,
+		src_widget->widget->name, sink_widget->widget->name);
 
 	header = src_fw_module->man4_module_entry.id;
 	header |= SOF_IPC4_MOD_INSTANCE(src_widget->instance_id);
@@ -1208,9 +1207,8 @@ static void sof_ipc4_route_free(struct snd_sof_dev *sdev, struct snd_sof_route *
 
 	ret = sof_ipc_tx_message(sdev->ipc, &msg, 0, NULL, 0);
 	if (ret < 0)
-		dev_err(sdev->dev, "failed to unbind module %s: %d and module %s: %d",
-			src_fw_module->man4_module_entry.name, src_widget->instance_id,
-			sink_fw_module->man4_module_entry.name, sink_widget->instance_id);
+		dev_err(sdev->dev, "failed to unbind modules %s -> %s\n",
+			src_widget->widget->name, sink_widget->widget->name);
 }
 
 static int sof_ipc4_control_load_volume(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol)
