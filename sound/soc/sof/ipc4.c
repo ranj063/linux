@@ -126,12 +126,7 @@ static void sof_ipc4_log_header(struct device *dev, u8 *text, struct sof_ipc4_ms
 {
 	u32 val, type;
 	u8 *str2 = NULL;
-	u8 *str, *dir;
-
-	if (msg->primary & SOF_IPC4_GLB_MSG_DIR_MASK)
-		dir = "reply";
-	else
-		dir = "request";
+	u8 *str;
 
 	val = msg->primary & SOF_IPC4_GLB_MSG_TARGET_MASK;
 	type = msg->primary & SOF_IPC4_GLB_MSG_TYPE_MASK;
@@ -277,20 +272,20 @@ static void sof_ipc4_log_header(struct device *dev, u8 *text, struct sof_ipc4_ms
 
 	if (str2) {
 		if (data_size_valid && msg->data_size)
-			dev_dbg(dev, "%s: %#x|%#x [data size: %zu]: %s|%s %s\n",
+			dev_dbg(dev, "%s: %#x|%#x [data size: %zu]: %s|%s\n",
 				text, msg->primary, msg->extension, msg->data_size,
-				str, str2, dir);
+				str, str2);
 		else
-			dev_dbg(dev, "%s: %#x|%#x: %s|%s %s\n", text, msg->primary,
-				msg->extension, str, str2, dir);
+			dev_dbg(dev, "%s: %#x|%#x: %s|%s\n", text, msg->primary,
+				msg->extension, str, str2);
 	} else {
 		if (data_size_valid && msg->data_size)
-			dev_dbg(dev, "%s: %#x|%#x [data size: %zu]: %s %s\n",
+			dev_dbg(dev, "%s: %#x|%#x [data size: %zu]: %s\n",
 				text, msg->primary, msg->extension, msg->data_size,
-				str, dir);
+				str);
 		else
-			dev_dbg(dev, "%s: %#x|%#x: %s %s\n", text, msg->primary,
-				msg->extension, str, dir);
+			dev_dbg(dev, "%s: %#x|%#x: %s\n", text, msg->primary,
+				msg->extension, str);
 	}
 }
 #else /* CONFIG_SND_SOC_SOF_DEBUG_VERBOSE_IPC */
@@ -370,7 +365,7 @@ static int ipc4_wait_tx_done(struct snd_sof_ipc *ipc, void *reply_data)
 		}
 
 		if (!msg->reply_error)
-			sof_ipc4_log_header(sdev->dev, "ipc tx done", ipc4_msg, true);
+			sof_ipc4_log_header(sdev->dev, "ipc tx done ", ipc4_msg, true);
 
 		/* re-enable dumps after successful IPC tx */
 		if (sdev->ipc_dump_printed) {
@@ -402,7 +397,7 @@ static int ipc4_tx_msg_unlocked(struct snd_sof_ipc *ipc,
 		return ret;
 	}
 
-	sof_ipc4_log_header(sdev->dev, "ipc tx", msg_data, true);
+	sof_ipc4_log_header(sdev->dev, "ipc tx      ", msg_data, true);
 
 	/* now wait for completion */
 	return ipc4_wait_tx_done(ipc, reply_data);
@@ -607,7 +602,7 @@ static void sof_ipc4_rx_msg(struct snd_sof_dev *sdev)
 	ipc4_msg->data_ptr = NULL;
 	ipc4_msg->data_size = 0;
 
-	sof_ipc4_log_header(sdev->dev, "ipc rx", ipc4_msg, false);
+	sof_ipc4_log_header(sdev->dev, "ipc rx      ", ipc4_msg, false);
 
 	switch (SOF_IPC4_GLB_NOTIFY_TYPE(ipc4_msg->primary)) {
 	case SOF_IPC4_GLB_NOTIFY_FW_READY:
@@ -625,12 +620,10 @@ static void sof_ipc4_rx_msg(struct snd_sof_dev *sdev)
 
 		break;
 	case SOF_IPC4_GLB_NOTIFY_RESOURCE_EVENT:
-		dev_dbg(sdev->dev, "%s: Notify Resource event: %#x|%#x\n", __func__,
-			ipc4_msg->primary, ipc4_msg->extension);
 		data_size = sizeof(struct sof_ipc4_notify_resource_data);
 		break;
 	default:
-		dev_dbg(sdev->dev, "%s: Unknown DSP message: %#x|%#x\n", __func__,
+		dev_dbg(sdev->dev, "%s: Unhandled DSP message: %#x|%#x\n", __func__,
 			ipc4_msg->primary, ipc4_msg->extension);
 		break;
 	}
@@ -644,7 +637,7 @@ static void sof_ipc4_rx_msg(struct snd_sof_dev *sdev)
 		snd_sof_ipc_msg_data(sdev, NULL, ipc4_msg->data_ptr, ipc4_msg->data_size);
 	}
 
-	sof_ipc4_log_header(sdev->dev, "ipc rx done", ipc4_msg, true);
+	sof_ipc4_log_header(sdev->dev, "ipc rx done ", ipc4_msg, true);
 
 	if (data_size) {
 		kfree(ipc4_msg->data_ptr);
