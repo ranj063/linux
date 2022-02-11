@@ -20,7 +20,6 @@ static int sof_ipc4_set_get_kcontrol_data(struct snd_sof_control *scontrol, bool
 	const struct ipc_ops *iops = sdev->ipc->ops;
 	struct sof_ipc4_msg *msg = &cdata->msg;
 	struct snd_sof_widget *swidget = NULL;
-	struct sof_ipc4_gain_data *data = msg->data_ptr;
 
 	/* find widget associated with the control */
 	list_for_each_entry(swidget, &sdev->widget_list, list) {
