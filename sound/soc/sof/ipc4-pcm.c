@@ -14,14 +14,14 @@
 #include "ipc4-ops.h"
 #include "ipc4-topology.h"
 
-static int sof_ipc4_set_pipeline_status(struct snd_sof_dev *sdev, u32 id, u32 status)
+static int sof_ipc4_set_pipeline_state(struct snd_sof_dev *sdev, u32 id, u32 state)
 {
 	struct sof_ipc4_msg msg = {{ 0 }};
 	u32 primary;
 
-	dev_dbg(sdev->dev, "ipc4 set pipeline %d status %d", id, status);
+	dev_dbg(sdev->dev, "ipc4 set pipeline %d status %d", id, state);
 
-	primary = status;
+	primary = state;
 	primary |= SOF_IPC4_GL_PIPE_STATE_ID(id);
 	primary |= SOF_IPC4_GLB_MSG_TYPE(SOF_IPC4_GLB_SET_PIPELINE_STATE);
 	primary |= SOF_IPC4_GLB_MSG_DIR(SOF_IPC4_MSG_REQUEST);
@@ -55,7 +55,8 @@ static int sof_ipc4_trigger_pipelines(struct snd_soc_component *component,
 	for_each_dapm_widgets(list, num_widgets, widget) {
 		swidget = widget->dobj.private;
 
-		if (!swidget)
+		/* trigger the FE pipelines */
+		if (!swidget || !WIDGET_IS_AIF(widget->id))
 			continue;
 
 		/* find pipeline widget for the pipeline that this widget belongs to */
@@ -67,8 +68,8 @@ static int sof_ipc4_trigger_pipelines(struct snd_soc_component *component,
 
 		/* first set the pipeline to PAUSED state */
 		if (pipeline->state != SOF_IPC4_PIPE_PAUSED) {
-			ret = sof_ipc4_set_pipeline_status(sdev, swidget->pipeline_id,
-							   SOF_IPC4_PIPE_PAUSED);
+			ret = sof_ipc4_set_pipeline_state(sdev, swidget->pipeline_id,
+							  SOF_IPC4_PIPE_PAUSED);
 			if (ret < 0) {
 				dev_err(sdev->dev, "failed to pause pipeline %d\n",
 					swidget->pipeline_id);
@@ -82,7 +83,7 @@ static int sof_ipc4_trigger_pipelines(struct snd_soc_component *component,
 			continue;
 
 		/* then set the final state */
-		ret = sof_ipc4_set_pipeline_status(sdev, swidget->pipeline_id, state);
+		ret = sof_ipc4_set_pipeline_state(sdev, swidget->pipeline_id, state);
 		if (ret < 0) {
 			dev_err(sdev->dev, "failed to set state %d for pipeline %d\n",
 				state, swidget->pipeline_id);
