@@ -1010,9 +1010,10 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
 	struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
 	struct snd_sof_dai *dai = swidget->private;
+	struct sof_ipc4_gtw_attributes *gtw_attr;
 	struct sof_ipc4_module_copier *copier;
 	struct sof_ipc4_copier *ipc4_copier;
-	struct sof_ipc4_gtw_attributes *gtw_attr;
+	int ret;
 
 	if (!dai || !dai->private) {
 		dev_err(sdev->dev, "No private data for DAI %s\n", swidget->widget->name);
@@ -1022,6 +1023,18 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	ipc4_copier = (struct sof_ipc4_copier *)dai->private;
 	copier = &ipc4_copier->copier;
 
+	/* pause DAI pipeline */
+	if (flags & SOF_DAI_CONFIG_FLAGS_PRE_RESET) {
+		ret = sof_ipc4_set_pipeline_state(sdev, swidget->pipeline_id,
+						  SOF_IPC4_PIPE_PAUSED);
+		if (ret < 0)
+			return ret;
+
+		pipeline->state = SOF_IPC4_PIPE_PAUSED;
+
+		return 0;
+	}
+
 	if (!data)
 		return 0;
 
@@ -1030,18 +1043,25 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	/* TODO: add SSP/DMIC cases */
 	switch (data->type) {
 	case SOF_DAI_INTEL_HDA:
-		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
-
 		gtw_attr = &ipc4_copier->gtw_attr;
-
 		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
-		break;
+		fallthrough;
 	case SOF_DAI_INTEL_ALH:
 		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
 		break;
 	default:
 		dev_warn(sdev->dev, "unsupported dai type %d\n", data->type);
 		break;
+	}
+
+	/* reset DAI pipeline */
+	if (flags & SOF_DAI_CONFIG_FLAGS_HW_FREE) {
+		ret = sof_ipc4_set_pipeline_state(sdev, swidget->pipeline_id,
+						  SOF_IPC4_PIPE_RESET);
+		if (ret < 0)
+			return ret;
+
+		pipeline->state = SOF_IPC4_PIPE_RESET;
 	}
 
 	return 0;

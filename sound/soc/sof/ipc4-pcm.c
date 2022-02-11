@@ -14,7 +14,7 @@
 #include "ipc4-ops.h"
 #include "ipc4-topology.h"
 
-static int sof_ipc4_set_pipeline_state(struct snd_sof_dev *sdev, u32 id, u32 state)
+int sof_ipc4_set_pipeline_state(struct snd_sof_dev *sdev, u32 id, u32 state)
 {
 	struct sof_ipc4_msg msg = {{ 0 }};
 	u32 primary;
@@ -55,9 +55,21 @@ static int sof_ipc4_trigger_pipelines(struct snd_soc_component *component,
 	for_each_dapm_widgets(list, num_widgets, widget) {
 		swidget = widget->dobj.private;
 
-		/* trigger the FE pipelines */
-		if (!swidget || !WIDGET_IS_AIF(widget->id))
+		if (!swidget)
 			continue;
+
+		/*
+		 * set pipeline state for both FE and BE pipelines for RUNNING state.
+		 * For PAUSE/RESET, set the pipeline state only for the FE pipeline.
+		 */
+		switch (state) {
+		case SOF_IPC4_PIPE_PAUSED:
+		case SOF_IPC4_PIPE_RESET:
+			if (!WIDGET_IS_AIF(swidget->id))
+				continue;
+		default:
+			break;
+		}
 
 		/* find pipeline widget for the pipeline that this widget belongs to */
 		pipeline_widget = swidget->pipe_widget;
@@ -130,7 +142,36 @@ static int sof_ipc4_pcm_hw_free(struct snd_soc_component *component,
 	return sof_ipc4_trigger_pipelines(component, substream, SOF_IPC4_PIPE_RESET);
 }
 
+static int sof_ipc4_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
+				       struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_component *component = snd_soc_rtdcom_lookup(rtd, SOF_AUDIO_PCM_DRV_NAME);
+	struct snd_sof_dai *dai = snd_sof_find_dai(component, (char *)rtd->dai_link->name);
+	struct sof_ipc4_copier *copier = dai->private;
+	struct snd_soc_dpcm *dpcm;
+
+	switch (copier->dai_type) {
+	case SOF_DAI_INTEL_HDA:
+		/*
+		 * HDAudio does not follow the default trigger
+		 * sequence due to firmware implementation
+		 */
+		for_each_dpcm_fe(rtd, SNDRV_PCM_STREAM_PLAYBACK, dpcm) {
+			struct snd_soc_pcm_runtime *fe = dpcm->fe;
+
+			fe->dai_link->trigger[SNDRV_PCM_STREAM_PLAYBACK] =
+				SND_SOC_DPCM_TRIGGER_POST;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 const struct ipc_pcm_ops ipc4_pcm_ops = {
 	.trigger = sof_ipc4_pcm_trigger,
 	.hw_free = sof_ipc4_pcm_hw_free,
+	.dai_link_fixup = sof_ipc4_pcm_dai_link_fixup,
 };

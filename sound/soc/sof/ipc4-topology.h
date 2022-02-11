@@ -171,4 +171,5 @@ void sof_ipc4_dbg_audio_format(struct device *dev, struct sof_ipc4_audio_format 
 			       const char *function_name);
 
 int snd_sof_load_topology2(struct snd_soc_component *scomp, const char *file);
+int sof_ipc4_set_pipeline_state(struct snd_sof_dev *sdev, u32 id, u32 state);
 #endif
