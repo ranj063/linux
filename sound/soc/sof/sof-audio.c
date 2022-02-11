@@ -410,14 +410,14 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 			if (WIDGET_IS_AIF_OR_DAI(widget->id)) {
 				ret = sof_widget_setup(sdev, widget->dobj.private);
 				if (ret < 0)
-					return ret;
+					goto out;
 			}
 
 			ret = sof_widget_setup(sdev, p->sink->dobj.private);
 			if (ret < 0) {
 				if (WIDGET_IS_AIF_OR_DAI(widget->id))
 					sof_widget_free(sdev, widget->dobj.private);
-				return ret;
+				goto out;
 			}
 
 			ret = sof_set_up_widgets_in_path(sdev, p->sink, dir);
@@ -425,9 +425,11 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 				if (WIDGET_IS_AIF_OR_DAI(widget->id))
 					sof_widget_free(sdev, widget->dobj.private);
 				sof_widget_free(sdev, p->sink->dobj.private);
-				return ret;
 			}
+out:
 			p->walking = false;
+			if (ret < 0)
+				return ret;
 		}
 	}
 
