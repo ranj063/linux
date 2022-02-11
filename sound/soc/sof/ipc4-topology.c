@@ -386,9 +386,10 @@ static int sof_ipc4_widget_setup_pcm(struct snd_sof_widget *swidget)
 	}
 	dev_dbg(scomp->dev, "host copier %s node_type %u\n", swidget->widget->name, node_type);
 
-	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
+	ipc4_copier->data.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 	ipc4_copier->copier_config = (uint32_t *)&ipc4_copier->gtw_attr;
-	ipc4_copier->copier.gtw_cfg.config_length = sizeof(struct sof_ipc4_gtw_attributes) >> 2;
+	ipc4_copier->data.gtw_cfg.config_length =
+		sizeof(struct sof_ipc4_gtw_attributes) >> 2;
 
 	/* set up module info and message header */
 	ret = sof_ipc4_widget_setup_msg(swidget, &ipc4_copier->msg);
@@ -465,9 +466,9 @@ static int sof_ipc4_widget_setup_comp_dai(struct snd_sof_widget *swidget)
 	dev_dbg(scomp->dev, "dai %s node_type %u dai_type %u dai_index %d\n", swidget->widget->name,
 		node_type, ipc4_copier->dai_type, ipc4_copier->dai_index);
 
-	ipc4_copier->copier.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
+	ipc4_copier->data.gtw_cfg.node_id = SOF_IPC4_NODE_TYPE(node_type);
 	ipc4_copier->copier_config = (uint32_t *)&ipc4_copier->gtw_attr;
-	ipc4_copier->copier.gtw_cfg.config_length = sizeof(struct sof_ipc4_gtw_attributes) >> 2;
+	ipc4_copier->data.gtw_cfg.config_length = sizeof(struct sof_ipc4_gtw_attributes) >> 2;
 
 	dai->scomp = scomp;
 	dai->private = ipc4_copier;
@@ -891,7 +892,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct snd_sof_widget *pipe_widget;
 	struct sof_ipc4_pipeline *pipeline;
-	struct sof_ipc4_module_copier *copier;
+	struct sof_ipc4_copier_data *copier_data;
 	struct sof_ipc4_copier *ipc4_copier;
 	size_t ref_audio_fmt_size;
 	void **ipc_config_data;
@@ -912,7 +913,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 
 		ipc4_copier = (struct sof_ipc4_copier *)swidget->private;
 		gtw_attr = &ipc4_copier->gtw_attr;
-		copier = &ipc4_copier->copier;
+		copier_data = &ipc4_copier->data;
 		available_fmt = &ipc4_copier->available_fmt;
 
 		/*
@@ -927,8 +928,8 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 			available_fmt->ref_audio_fmt = available_fmt->out_audio_fmt;
 			ref_audio_fmt_size = sizeof(struct sof_ipc4_audio_format);
 		}
-		copier->gtw_cfg.node_id &= ~(0xFF);
-		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(runtime_params->stream_tag - 1);
+		copier_data->gtw_cfg.node_id &= ~(0xFF);
+		copier_data->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(runtime_params->stream_tag - 1);
 
 		/* set gateway attributes */
 		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
@@ -940,7 +941,7 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 		struct snd_sof_dai *dai = swidget->private;
 
 		ipc4_copier = (struct sof_ipc4_copier *)dai->private;
-		copier = &ipc4_copier->copier;
+		copier_data = &ipc4_copier->data;
 		available_fmt = &ipc4_copier->available_fmt;
 		if (runtime_params->direction == SNDRV_PCM_STREAM_PLAYBACK) {
 			available_fmt->ref_audio_fmt = available_fmt->out_audio_fmt;
@@ -960,28 +961,28 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 	}
 
 	/* set input and output audio formats */
-	ret = sof_ipc4_init_audio_fmt(sdev, swidget, &copier->base_config,
-				      &copier->out_format, runtime_params,
+	ret = sof_ipc4_init_audio_fmt(sdev, swidget, &copier_data->base_config,
+				      &copier_data->out_format, runtime_params,
 				      available_fmt, ref_audio_fmt_size);
 	if (ret < 0)
 		return ret;
 
 	/* modify the input_params for the next widget */
-	input_params->rate = copier->out_format.sampling_frequency;
+	input_params->rate = copier_data->out_format.sampling_frequency;
 	input_params->channels =
-		SOF_IPC4_AUDIO_FORMAT_CFG_CHANNELS_COUNT(copier->out_format.fmt_cfg);
+		SOF_IPC4_AUDIO_FORMAT_CFG_CHANNELS_COUNT(copier_data->out_format.fmt_cfg);
 	input_params->sample_valid_bytes =
-		SOF_IPC4_AUDIO_FORMAT_CFG_V_BIT_DEPTH(copier->out_format.fmt_cfg) >> 3;
+		SOF_IPC4_AUDIO_FORMAT_CFG_V_BIT_DEPTH(copier_data->out_format.fmt_cfg) >> 3;
 
 	/* set the gateway dma_buffer_size using the matched ID returned above */
-	copier->gtw_cfg.dma_buffer_size = available_fmt->dma_buffer_size[ret];
+	copier_data->gtw_cfg.dma_buffer_size = available_fmt->dma_buffer_size[ret];
 
 	data = &ipc4_copier->copier_config;
 	ipc_config_size = &ipc4_copier->ipc_config_size;
 	ipc_config_data = &ipc4_copier->ipc_config_data;
 
 	/* config_length is DWORD based */
-	ipc_size = sizeof(*copier) + copier->gtw_cfg.config_length * 4;
+	ipc_size = sizeof(*copier_data) + copier_data->gtw_cfg.config_length * 4;
 
 	dev_dbg(sdev->dev, "copier %s, IPC size is %d", swidget->widget->name, ipc_size);
 
@@ -992,13 +993,13 @@ static int sof_ipc4_prepare_copier_module(struct snd_sof_widget *swidget,
 	*ipc_config_size = ipc_size;
 
 	/* copy IPC data */
-	memcpy(*ipc_config_data, (void *)copier, sizeof(*copier));
-	if (copier->gtw_cfg.config_length)
-		memcpy(*ipc_config_data + sizeof(*copier),
-		       *data, copier->gtw_cfg.config_length * 4);
+	memcpy(*ipc_config_data, (void *)copier_data, sizeof(*copier_data));
+	if (copier_data->gtw_cfg.config_length)
+		memcpy(*ipc_config_data + sizeof(*copier_data),
+		       *data, copier_data->gtw_cfg.config_length * 4);
 
 	/* update pipeline memory usage */
-	sof_ipc4_update_pipeline_mem_usage(sdev, swidget, &copier->base_config);
+	sof_ipc4_update_pipeline_mem_usage(sdev, swidget, &copier_data->base_config);
 
 	/* assign instance ID */
 	return sof_ipc4_widget_assign_instance_id(sdev, swidget);
@@ -1011,7 +1012,7 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
 	struct snd_sof_dai *dai = swidget->private;
 	struct sof_ipc4_gtw_attributes *gtw_attr;
-	struct sof_ipc4_module_copier *copier;
+	struct sof_ipc4_copier_data *copier_data;
 	struct sof_ipc4_copier *ipc4_copier;
 	int ret;
 
@@ -1021,7 +1022,7 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	}
 
 	ipc4_copier = (struct sof_ipc4_copier *)dai->private;
-	copier = &ipc4_copier->copier;
+	copier_data = &ipc4_copier->data;
 
 	/* pause DAI pipeline */
 	if (flags & SOF_DAI_CONFIG_FLAGS_PRE_RESET) {
@@ -1038,7 +1039,7 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	if (!data)
 		return 0;
 
-	copier->gtw_cfg.node_id &= ~(0xFF);
+	copier_data->gtw_cfg.node_id &= ~(0xFF);
 
 	/* TODO: add SSP/DMIC cases */
 	switch (data->type) {
@@ -1047,7 +1048,7 @@ static int sof_ipc4_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 		gtw_attr->lp_buffer_alloc = pipeline->lp_mode;
 		fallthrough;
 	case SOF_DAI_INTEL_ALH:
-		copier->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
+		copier_data->gtw_cfg.node_id |= SOF_IPC4_NODE_INDEX(data->dai_data);
 		break;
 	default:
 		dev_warn(sdev->dev, "unsupported dai type %d\n", data->type);

@@ -60,13 +60,13 @@ struct sof_copier_gateway_cfg {
 };
 
 /**
- * struct sof_ipc4_module_copier - IPC data for copier
+ * struct sof_ipc4_copier_data - IPC data for copier
  * @base_config: Base configuration including input audio format
  * @out_format: Output audio format
  * @copier_feature_mask: Copier feature mask
  * @gtw_cfg: Gateway configuration
  */
-struct sof_ipc4_module_copier {
+struct sof_ipc4_copier_data {
 	struct sof_ipc4_base_module_cfg base_config;
 	struct sof_ipc4_audio_format out_format;
 	uint32_t copier_feature_mask;
@@ -111,7 +111,7 @@ struct sof_ipc4_available_audio_format {
  * @frame_fmt: frame format
  */
 struct sof_ipc4_copier {
-	struct sof_ipc4_module_copier copier;
+	struct sof_ipc4_copier_data data;
 	u32 *copier_config;
 	uint32_t ipc_config_size;
 	void *ipc_config_data;
