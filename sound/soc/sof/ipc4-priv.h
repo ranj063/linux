@@ -13,16 +13,23 @@
 #include <sound/sof/ext_manifest4.h>
 #include "sof-priv.h"
 
+/* 5 chars for the .bin extension and the null terminator */
+#define LIBRARY_FILENAME_LEN (UUID_STRING_LEN + 5)
+
 /**
  * struct sof_ipc4_fw_data - IPC4-specific data
  * @manifest_fw_hdr_offset: FW header offset in the manifest
  * @num_fw_modules : Number of modules in base FW
  * @fw_modules: Array of base FW modules
+ * @max_fw_libs: Maximum number of module libraries supported by the FW
+ * @fw_lib_names: Array of module library names. This does not include the base FW
  */
 struct sof_ipc4_fw_data {
 	u32 manifest_fw_hdr_offset;
 	int num_fw_modules;
 	void *fw_modules;
+	u32 max_fw_libs;
+	char (*fw_lib_names)[LIBRARY_FILENAME_LEN];
 };
 
 /**
