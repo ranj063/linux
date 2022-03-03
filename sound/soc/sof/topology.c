@@ -1897,6 +1897,19 @@ static int sof_complete(struct snd_soc_component *scomp)
 			}
 		}
 
+	/* load all 3rd party module libraries */
+	list_for_each_entry(swidget, &sdev->widget_list, list) {
+		/* nothing to do if UUID is not set */
+		if (guid_is_null(&swidget->uuid))
+			continue;
+
+		if (sdev->ipc->ops->fw_loader->load_library) {
+			ret = sdev->ipc->ops->fw_loader->load_library(sdev, &swidget->uuid);
+			if (ret < 0)
+				return ret;
+		}
+	}
+
 	/*
 	 * then update all widget IPC structures. If any of the ipc_setup callbacks fail, the
 	 * topology will be removed and all widgets will be unloaded resulting in freeing all
