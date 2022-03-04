@@ -382,6 +382,8 @@ struct sof_ipc_pm_ops {
  *			configuration from the booted firmware.
  *			Executed after the first successful firmware boot.
  * @load_library: Optional function pointer to load libraries for 3rd party modules
+ * @get_modules_info: Optional function pointer to retrieve the module information from the FW.
+ *		      This should be called after all 3rd party module libraries have been loaded.
  */
 struct sof_ipc_fw_loader_ops {
 	int (*validate)(struct snd_sof_dev *sdev);
@@ -389,6 +391,7 @@ struct sof_ipc_fw_loader_ops {
 	int (*load_fw_to_dsp)(struct snd_sof_dev *sdev);
 	int (*query_fw_configuration)(struct snd_sof_dev *sdev);
 	int (*load_library)(struct snd_sof_dev *sdev, guid_t *uuid);
+	int (*get_modules_info)(struct snd_sof_dev *sdev);
 };
 
 struct sof_ipc_tplg_ops;
