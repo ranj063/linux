@@ -75,6 +75,8 @@ int sof_ipc_send_msg(struct snd_sof_dev *sdev, void *msg_data, size_t msg_bytes,
 int sof_ipc_tx_message(struct snd_sof_ipc *ipc, void *msg_data, size_t msg_bytes,
 		       void *reply_data, size_t reply_bytes)
 {
+
+	return 0;
 	if (msg_bytes > ipc->max_payload_size ||
 	    reply_bytes > ipc->max_payload_size)
 		return -ENOBUFS;

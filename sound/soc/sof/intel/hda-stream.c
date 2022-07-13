@@ -349,7 +349,6 @@ int hda_dsp_stream_trigger(struct snd_sof_dev *sdev,
 
 		if (ret >= 0)
 			hstream->running = true;
-
 		break;
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
@@ -482,11 +481,6 @@ int hda_dsp_stream_hw_params(struct snd_sof_dev *sdev,
 		dev_err(sdev->dev, "error: no stream available\n");
 		return -ENODEV;
 	}
-
-	/* decouple host and link DMA */
-	mask = 0x1 << hstream->index;
-	snd_sof_dsp_update_bits(sdev, HDA_DSP_PP_BAR, SOF_HDA_REG_PP_PPCTL,
-				mask, mask);
 
 	if (!dmab) {
 		dev_err(sdev->dev, "error: no dma buffer allocated!\n");

@@ -143,6 +143,7 @@ static int sof_ipc4_pcm_hw_free(struct snd_soc_component *component,
 	return sof_ipc4_trigger_pipelines(component, substream, SOF_IPC4_PIPE_RESET);
 }
 
+#if 0
 static void ipc4_ssp_dai_config_pcm_params_match(struct snd_sof_dev *sdev, const char *link_name,
 						 struct snd_pcm_hw_params *params)
 {
@@ -222,9 +223,9 @@ static int sof_ipc4_pcm_dai_link_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
-
+#endif
 const struct sof_ipc_pcm_ops ipc4_pcm_ops = {
 	.trigger = sof_ipc4_pcm_trigger,
 	.hw_free = sof_ipc4_pcm_hw_free,
-	.dai_link_fixup = sof_ipc4_pcm_dai_link_fixup,
+	//.dai_link_fixup = sof_ipc4_pcm_dai_link_fixup,
 };

@@ -400,6 +400,8 @@ static int sof_ipc4_set_get_data(struct snd_sof_dev *sdev, void *data,
 	size_t chunk_size;
 	int ret;
 
+	return 0;
+
 	if (!data)
 		return -EINVAL;
 

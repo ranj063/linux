@@ -73,9 +73,11 @@ static void sof_cache_debugfs(struct snd_sof_dev *sdev)
 static int sof_resume(struct device *dev, bool runtime_resume)
 {
 	struct snd_sof_dev *sdev = dev_get_drvdata(dev);
+#if 0
 	const struct sof_ipc_pm_ops *pm_ops = sdev->ipc->ops->pm;
 	const struct sof_ipc_tplg_ops *tplg_ops = sdev->ipc->ops->tplg;
 	u32 old_state = sdev->dsp_power_state.state;
+#endif
 	int ret;
 
 	/* do nothing if dsp resume callbacks are not set */
@@ -103,6 +105,7 @@ static int sof_resume(struct device *dev, bool runtime_resume)
 		return ret;
 	}
 
+#if 0
 	/*
 	 * Nothing further to be done for platforms that support the low power
 	 * D0 substate. Resume trace and return when resuming from
@@ -172,7 +175,7 @@ static int sof_resume(struct device *dev, bool runtime_resume)
 		if (ret < 0)
 			dev_err(sdev->dev, "ctx_restore IPC error during resume: %d\n", ret);
 	}
-
+#endif
 	return ret;
 }
 

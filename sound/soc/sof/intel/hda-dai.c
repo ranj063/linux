@@ -127,7 +127,7 @@ hda_link_stream_assign(struct hdac_bus *bus,
 
 	if (res) {
 		/* Make sure that host and link DMA is decoupled. */
-		snd_hdac_ext_stream_decouple_locked(bus, res, true);
+		//snd_hdac_ext_stream_decouple_locked(bus, res, true);
 
 		res->link_locked = 1;
 		res->link_substream = substream;
@@ -145,17 +145,17 @@ static int hda_link_dma_cleanup(struct snd_pcm_substream *substream,
 {
 	struct hdac_ext_stream *hext_stream = snd_soc_dai_get_dma_data(cpu_dai, substream);
 	struct hdac_bus *bus = hstream->bus;
-	struct sof_intel_hda_stream *hda_stream;
+//	struct sof_intel_hda_stream *hda_stream;
 	struct hdac_ext_link *link;
 	int stream_tag;
 
 	link = snd_hdac_ext_bus_get_link(bus, codec_dai->component->name);
 	if (!link)
 		return -EINVAL;
-
+#if 0
 	if (trigger_suspend_stop)
 		snd_hdac_ext_link_stream_clear(hext_stream);
-
+#endif
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		stream_tag = hdac_stream(hext_stream)->stream_tag;
 		snd_hdac_ext_link_clear_stream_id(link, stream_tag);
@@ -164,10 +164,11 @@ static int hda_link_dma_cleanup(struct snd_pcm_substream *substream,
 	snd_hdac_ext_stream_release(hext_stream, HDAC_EXT_STREAM_TYPE_LINK);
 	hext_stream->link_prepared = 0;
 
+#if 0
 	/* free the host DMA channel reserved by hostless streams */
 	hda_stream = hstream_to_sof_hda_stream(hext_stream);
 	hda_stream->host_reserved = 0;
-
+#endif
 	return 0;
 }
 
@@ -189,8 +190,9 @@ static int hda_link_dma_params(struct hdac_ext_stream *hext_stream,
 	dev_dbg(bus->dev, "format_val=%d, rate=%d, ch=%d, format=%d\n",
 		format_val, params->s_freq, params->ch, params->format);
 
+#if 0
 	snd_hdac_ext_link_stream_setup(hext_stream, format_val);
-
+#endif
 	if (hext_stream->hstream.direction == SNDRV_PCM_STREAM_PLAYBACK) {
 		list_for_each_entry(link, &bus->hlink_list, list) {
 			if (link->index == params->link_index)
@@ -198,7 +200,6 @@ static int hda_link_dma_params(struct hdac_ext_stream *hext_stream,
 								stream_tag);
 		}
 	}
-
 	hext_stream->link_prepared = 1;
 
 	return 0;
@@ -353,7 +354,7 @@ static int hda_dai_hw_params(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		return ret;
 
-	return hda_dai_hw_params_update(substream, params, dai);
+	return ret;
 }
 
 
@@ -445,6 +446,7 @@ static int ipc3_hda_dai_trigger(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+#if 0
 /*
  * In contrast to IPC3, the dai trigger in IPC4 mixes pipeline state changes
  * (over IPC channel) and DMA state change (direct host register changes).
@@ -529,17 +531,11 @@ static int ipc4_hda_dai_trigger(struct snd_pcm_substream *substream,
 
 	return 0;
 }
-
+#endif
 static int hda_dai_hw_free(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
 {
-	int ret;
-
-	ret = hda_link_dma_hw_free(substream);
-	if (ret < 0)
-		return ret;
-
-	return hda_dai_hw_free_ipc(substream->stream, dai);
+	return hda_link_dma_hw_free(substream);
 }
 
 static const struct snd_soc_dai_ops ipc3_hda_dai_ops = {
@@ -593,8 +589,6 @@ static int hda_dai_suspend(struct hdac_bus *bus)
 static const struct snd_soc_dai_ops ipc4_hda_dai_ops = {
 	.hw_params = hda_dai_hw_params,
 	.hw_free = hda_dai_hw_free,
-	.trigger = ipc4_hda_dai_trigger,
-	.prepare = hda_dai_prepare,
 };
 
 #endif
@@ -708,6 +702,7 @@ static const struct snd_soc_dai_ops ipc3_ssp_dai_ops = {
 	.shutdown = ssp_dai_shutdown,
 };
 
+#if 0
 static int ipc4_be_dai_common_trigger(struct snd_soc_dai *dai, int cmd, int stream)
 {
 	struct snd_sof_widget *pipe_widget;
@@ -765,6 +760,7 @@ static const struct snd_soc_dai_ops ipc4_dmic_dai_ops = {
 static const struct snd_soc_dai_ops ipc4_ssp_dai_ops = {
 	.trigger = ipc4_be_dai_trigger,
 };
+#endif
 
 void hda_set_dai_drv_ops(struct snd_sof_dev *sdev, struct snd_sof_dsp_ops *ops)
 {
@@ -790,14 +786,6 @@ void hda_set_dai_drv_ops(struct snd_sof_dev *sdev, struct snd_sof_dsp_ops *ops)
 		struct sof_ipc4_fw_data *ipc4_data = sdev->private;
 
 		for (i = 0; i < ops->num_drv; i++) {
-			if (strstr(ops->drv[i].name, "DMIC")) {
-				ops->drv[i].ops = &ipc4_dmic_dai_ops;
-				continue;
-			}
-			if (strstr(ops->drv[i].name, "SSP")) {
-				ops->drv[i].ops = &ipc4_ssp_dai_ops;
-				continue;
-			}
 #if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
 			if (strstr(ops->drv[i].name, "iDisp") ||
 			    strstr(ops->drv[i].name, "Analog") ||
@@ -808,9 +796,6 @@ void hda_set_dai_drv_ops(struct snd_sof_dev *sdev, struct snd_sof_dsp_ops *ops)
 
 		if (!hda_use_tplg_nhlt)
 			ipc4_data->nhlt = intel_nhlt_init(sdev->dev);
-
-		if (IS_ENABLED(CONFIG_SND_SOC_SOF_INTEL_SOUNDWIRE))
-			sdw_callback.trigger = ipc4_be_dai_common_trigger;
 
 		break;
 	}

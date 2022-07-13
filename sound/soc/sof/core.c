@@ -238,6 +238,7 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 		goto fw_load_err;
 	}
 
+#if 0
 	sof_set_fw_state(sdev, SOF_FW_BOOT_IN_PROGRESS);
 
 	/*
@@ -265,6 +266,7 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 	} else {
 		dev_dbg(sdev->dev, "SOF firmware trace disabled\n");
 	}
+#endif
 
 	/* hereafter all FW boot flows are for PM reasons */
 	sdev->first_boot = false;
@@ -276,14 +278,14 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 	if (ret < 0) {
 		dev_err(sdev->dev,
 			"error: failed to register DSP DAI driver %d\n", ret);
-		goto fw_trace_err;
+		goto dbg_err;
 	}
 
 	ret = snd_sof_machine_register(sdev, plat_data);
 	if (ret < 0) {
 		dev_err(sdev->dev,
 			"error: failed to register machine driver %d\n", ret);
-		goto fw_trace_err;
+		goto dbg_err;
 	}
 
 	ret = sof_register_clients(sdev);
@@ -309,10 +311,12 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 
 sof_machine_err:
 	snd_sof_machine_unregister(sdev, plat_data);
+#if 0
 fw_trace_err:
 	sof_fw_trace_free(sdev);
 fw_run_err:
 	snd_sof_fw_unload(sdev);
+#endif
 fw_load_err:
 	snd_sof_ipc_free(sdev);
 ipc_err:
