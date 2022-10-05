@@ -76,6 +76,35 @@ static int sof_ipc4_trigger_pipelines(struct snd_soc_component *component,
 		pipeline_widget = swidget->pipe_widget;
 		pipeline = (struct sof_ipc4_pipeline *)pipeline_widget->private;
 
+		if (pipeline->use_chain_dma) {
+			struct sof_ipc4_msg *msg = &pipeline->msg;
+			/* only handle the AIF widget for chain DMA */
+			if (!WIDGET_IS_AIF(swidget->id))
+				continue;
+
+			if (state == SOF_IPC4_PIPE_RUNNING) {
+				/* set allocate, enable and scs bits to configure chain DMA. FIXME: do this properly */
+				pipeline->msg.primary = SOF_IPC4_MSG_TYPE_SET(SOF_IPC4_GLB_CHAIN_DMA);
+				pipeline->msg.primary |= SOF_IPC4_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+				pipeline->msg.primary |= SOF_IPC4_MSG_TARGET(SOF_IPC4_FW_GEN_MSG);
+				/* FIXME: set SCS bit for 16-bit playback */
+				msg->primary |= (0x3 << 16);
+				return sof_ipc_tx_message(sdev->ipc, msg, 0, NULL, 0);
+
+			}
+
+			/* only handle the PAUSED state to avoid sending the same IPC more than once. */
+			if (state == SOF_IPC4_PIPE_PAUSED) {
+				msg->primary &= ~(GENMASK(18, 16));
+				msg->extension = 0;
+				return sof_ipc_tx_message(sdev->ipc, msg, 0, NULL, 0);
+			}
+
+			/* reset is preceded by pause */
+			if (state == SOF_IPC4_PIPE_RESET)
+				return 0;
+		}
+
 		if (pipeline->state == state)
 			continue;
 

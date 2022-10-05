@@ -484,19 +484,23 @@ static int ipc4_hda_dai_trigger(struct snd_pcm_substream *substream,
 		struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
 		struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
 
-		ret = sof_ipc4_set_pipeline_state(sdev, pipe_widget->instance_id,
-						  SOF_IPC4_PIPE_PAUSED);
-		if (ret < 0)
-			return ret;
+		if (!pipeline->use_chain_dma) {
+			ret = sof_ipc4_set_pipeline_state(sdev, pipe_widget->instance_id,
+							  SOF_IPC4_PIPE_PAUSED);
+			if (ret < 0)
+				return ret;
+		}
 
 		pipeline->state = SOF_IPC4_PIPE_PAUSED;
 
 		snd_hdac_ext_link_stream_clear(hext_stream);
 
-		ret = sof_ipc4_set_pipeline_state(sdev, pipe_widget->instance_id,
-						  SOF_IPC4_PIPE_RESET);
-		if (ret < 0)
-			return ret;
+		if (!pipeline->use_chain_dma) {
+			ret = sof_ipc4_set_pipeline_state(sdev, pipe_widget->instance_id,
+							  SOF_IPC4_PIPE_RESET);
+			if (ret < 0)
+				return ret;
+		}
 
 		pipeline->state = SOF_IPC4_PIPE_RESET;
 
@@ -512,10 +516,12 @@ static int ipc4_hda_dai_trigger(struct snd_pcm_substream *substream,
 		struct snd_sof_widget *pipe_widget = swidget->pipe_widget;
 		struct sof_ipc4_pipeline *pipeline = pipe_widget->private;
 
-		ret = sof_ipc4_set_pipeline_state(sdev, pipe_widget->instance_id,
-						  SOF_IPC4_PIPE_PAUSED);
-		if (ret < 0)
-			return ret;
+		if (!pipeline->use_chain_dma) {
+			ret = sof_ipc4_set_pipeline_state(sdev, pipe_widget->instance_id,
+							  SOF_IPC4_PIPE_PAUSED);
+			if (ret < 0)
+				return ret;
+		}
 
 		pipeline->state = SOF_IPC4_PIPE_PAUSED;
 

@@ -70,6 +70,7 @@
  * @lp_mode: Low power mode
  * @mem_usage: Memory usage
  * @state: Pipeline state
+ * @use_chain_dma: flag to indicate if the firmware should use chained DMA
  * @msg: message structure for pipeline
  */
 struct sof_ipc4_pipeline {
@@ -77,6 +78,7 @@ struct sof_ipc4_pipeline {
 	uint32_t lp_mode;
 	uint32_t mem_usage;
 	int state;
+	bool use_chain_dma;
 	struct sof_ipc4_msg msg;
 };
 
@@ -265,6 +267,25 @@ struct sof_ipc4_src {
 	uint32_t sink_rate;
 	struct sof_ipc4_available_audio_format available_fmt;
 	struct sof_ipc4_msg msg;
+};
+
+/**
+ * struct sof_ipc4_chain_dma - chain DMA config
+ * @host_dma_id: Host DMA channel ID
+ * @link_dma_id: Link DMA channel ID
+ * @allocate: allocate buffer specified by FIFO size
+ * @enable: enable/disable chain DMA
+ * @scs: controls SCS bit in both Host and Link gateway
+ * @fifo_size: fifo size in bytes
+ */
+struct sof_ipc4_chain_dma {
+	uint32_t host_dma_id;
+	uint32_t link_dma_id;
+	uint32_t allocate;
+	uint32_t enable;
+	uint32_t scs;
+	uint32_t type;
+	uint32_t fifo_size;
 };
 
 #endif
