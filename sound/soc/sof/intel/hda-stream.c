@@ -493,10 +493,12 @@ int hda_dsp_stream_hw_params(struct snd_sof_dev *sdev,
 		return -ENODEV;
 	}
 
-	/* decouple host and link DMA */
-	mask = 0x1 << hstream->index;
-	snd_sof_dsp_update_bits(sdev, HDA_DSP_PP_BAR, SOF_HDA_REG_PP_PPCTL,
-				mask, mask);
+	/* decouple host and link DMA when DSP is used */
+	if (sdev->ipc) {
+		mask = 0x1 << hstream->index;
+		snd_sof_dsp_update_bits(sdev, HDA_DSP_PP_BAR, SOF_HDA_REG_PP_PPCTL,
+					mask, mask);
+	}
 
 	/* clear stream status */
 	snd_sof_dsp_update_bits(sdev, HDA_DSP_HDA_BAR, sd_offset,

@@ -761,9 +761,72 @@ static const struct snd_soc_dai_ops ipc4_ssp_dai_ops = {
 	.trigger = ipc4_be_dai_trigger,
 };
 
+static int dspless_hda_dai_hw_params(struct snd_pcm_substream *substream,
+				     struct snd_pcm_hw_params *params,
+				     struct snd_soc_dai *dai)
+{
+	struct hdac_stream *hstream = substream->runtime->private_data;
+	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+	struct hdac_ext_stream *hext_stream = stream_to_hdac_ext_stream(hstream);
+	struct hdac_ext_link *hlink;
+
+	hlink = snd_hdac_ext_bus_get_hlink_by_name(hstream->bus, codec_dai->component->name);
+	if (!hlink)
+		return -EINVAL;
+
+	/* set the hdac_stream in the codec dai */
+	snd_soc_dai_set_stream(codec_dai, hstream, substream->stream);
+
+	if (hext_stream->hstream.direction == SNDRV_PCM_STREAM_PLAYBACK)
+		snd_hdac_ext_bus_link_set_stream_id(hlink, hstream->stream_tag);
+
+	hext_stream->link_prepared = 1;
+
+	return 0;
+}
+
+static int dspless_hda_dai_hw_free(struct snd_pcm_substream *substream,
+				   struct snd_soc_dai *dai)
+{
+	struct hdac_stream *hstream = substream->runtime->private_data;
+	struct hdac_ext_stream *hext_stream = stream_to_hdac_ext_stream(hstream);
+	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+	struct hdac_ext_link *hlink;
+
+	hlink = snd_hdac_ext_bus_get_hlink_by_name(hstream->bus, codec_dai->component->name);
+	if (!hlink)
+		return -EINVAL;
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		snd_hdac_ext_bus_link_clear_stream_id(hlink, hstream->stream_tag);
+
+	hext_stream->link_prepared = 0;
+
+	return 0;
+}
+
+static const struct snd_soc_dai_ops dspless_hda_dai_ops = {
+	.hw_params = dspless_hda_dai_hw_params,
+	.hw_free = dspless_hda_dai_hw_free,
+};
+
 void hda_set_dai_drv_ops(struct snd_sof_dev *sdev, struct snd_sof_dsp_ops *ops)
 {
 	int i;
+
+	if (!sdev->ipc) {
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA)
+		for (i = 0; i < ops->num_drv; i++) {
+			if (strstr(ops->drv[i].name, "iDisp") ||
+			    strstr(ops->drv[i].name, "Analog") ||
+			    strstr(ops->drv[i].name, "Digital"))
+				ops->drv[i].ops = &dspless_hda_dai_ops;
+		}
+#endif
+		return;
+	}
 
 	switch (sdev->pdata->ipc_type) {
 	case SOF_IPC:
