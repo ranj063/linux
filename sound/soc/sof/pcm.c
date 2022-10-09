@@ -126,7 +126,7 @@ static int sof_pcm_hw_params(struct snd_soc_component *component,
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(component);
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 	struct snd_sof_platform_stream_params platform_params = { 0 };
-	const struct sof_ipc_pcm_ops *pcm_ops = sdev->ipc->ops->pcm;
+	const struct sof_ipc_pcm_ops *pcm_ops = NULL;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_sof_pcm *spcm;
 	int ret;
@@ -143,7 +143,10 @@ static int sof_pcm_hw_params(struct snd_soc_component *component,
 	 * Handle repeated calls to hw_params() without free_pcm() in
 	 * between. At least ALSA OSS emulation depends on this.
 	 */
-	if (pcm_ops->hw_free && spcm->prepared[substream->stream]) {
+	if (sdev->ipc)
+		pcm_ops = sdev->ipc->ops->pcm;
+
+	if (pcm_ops && pcm_ops->hw_free && spcm->prepared[substream->stream]) {
 		ret = pcm_ops->hw_free(component, substream);
 		if (ret < 0)
 			return ret;
@@ -177,7 +180,7 @@ static int sof_pcm_hw_params(struct snd_soc_component *component,
 			return ret;
 	}
 
-	if (pcm_ops->hw_params) {
+	if (pcm_ops && pcm_ops->hw_params) {
 		ret = pcm_ops->hw_params(component, substream, params, &platform_params);
 		if (ret < 0)
 			return ret;
@@ -196,7 +199,7 @@ static int sof_pcm_hw_free(struct snd_soc_component *component,
 {
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(component);
-	const struct sof_ipc_pcm_ops *pcm_ops = sdev->ipc->ops->pcm;
+	const struct sof_ipc_pcm_ops *pcm_ops = NULL;
 	struct snd_sof_pcm *spcm;
 	int ret, err = 0;
 
@@ -211,8 +214,11 @@ static int sof_pcm_hw_free(struct snd_soc_component *component,
 	dev_dbg(component->dev, "pcm: free stream %d dir %d\n",
 		spcm->pcm.pcm_id, substream->stream);
 
+	if (sdev->ipc)
+		pcm_ops = sdev->ipc->ops->pcm;
+
 	/* free PCM in the DSP */
-	if (pcm_ops->hw_free && spcm->prepared[substream->stream]) {
+	if (pcm_ops && pcm_ops->hw_free && spcm->prepared[substream->stream]) {
 		ret = pcm_ops->hw_free(component, substream);
 		if (ret < 0)
 			err = ret;
@@ -279,7 +285,7 @@ static int sof_pcm_trigger(struct snd_soc_component *component,
 {
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(component);
-	const struct sof_ipc_pcm_ops *pcm_ops = sdev->ipc->ops->pcm;
+	const struct sof_ipc_pcm_ops *pcm_ops = NULL;
 	struct snd_sof_pcm *spcm;
 	bool reset_hw_params = false;
 	bool ipc_first = false;
@@ -288,6 +294,9 @@ static int sof_pcm_trigger(struct snd_soc_component *component,
 	/* nothing to do for BE */
 	if (rtd->dai_link->no_pcm)
 		return 0;
+
+	if (sdev->ipc)
+		pcm_ops = sdev->ipc->ops->pcm;
 
 	spcm = snd_sof_find_spcm_dai(component, rtd);
 	if (!spcm)
@@ -342,7 +351,7 @@ static int sof_pcm_trigger(struct snd_soc_component *component,
 	if (!ipc_first)
 		snd_sof_pcm_platform_trigger(sdev, substream, cmd);
 
-	if (pcm_ops->trigger)
+	if (pcm_ops && pcm_ops->trigger)
 		ret = pcm_ops->trigger(component, substream, cmd);
 
 	/* need to STOP DMA even if trigger IPC failed */
@@ -677,7 +686,8 @@ void snd_sof_new_platform_drv(struct snd_sof_dev *sdev)
 
 	pd->pcm_construct = sof_pcm_new;
 	pd->ignore_machine = drv_name;
-	pd->be_hw_params_fixup = sof_pcm_dai_link_fixup;
+	if (sdev->ipc)
+		pd->be_hw_params_fixup = sof_pcm_dai_link_fixup;
 	pd->be_pcm_base = SOF_BE_PCM_BASE;
 	pd->use_dai_pcm_id = true;
 	pd->topology_name_prefix = "sof";

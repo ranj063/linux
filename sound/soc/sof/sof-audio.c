@@ -275,13 +275,18 @@ static void
 sof_unprepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *widget,
 			      struct snd_soc_dapm_widget_list *list)
 {
-	const struct sof_ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
-	const struct sof_ipc_tplg_widget_ops *widget_ops = ipc_tplg_ops->widget;
+	const struct sof_ipc_tplg_widget_ops *widget_ops = NULL;
+	const struct sof_ipc_tplg_ops *ipc_tplg_ops;
 	struct snd_sof_widget *swidget = widget->dobj.private;
 	struct snd_soc_dapm_path *p;
 
+	if (sdev->ipc) {
+		ipc_tplg_ops = sdev->ipc->ops->tplg;
+		widget_ops = ipc_tplg_ops->widget;
+	}
+
 	/* return if the widget is in use or if it is already unprepared */
-	if (!swidget || !swidget->prepared || swidget->use_count > 1)
+	if (widget_ops || !swidget || !swidget->prepared || swidget->use_count > 1)
 		return;
 
 	if (widget_ops[widget->id].ipc_unprepare)
@@ -309,13 +314,18 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 			    struct snd_pcm_hw_params *pipeline_params, int dir,
 			    struct snd_soc_dapm_widget_list *list)
 {
-	const struct sof_ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
-	const struct sof_ipc_tplg_widget_ops *widget_ops = ipc_tplg_ops->widget;
+	const struct sof_ipc_tplg_widget_ops *widget_ops = NULL;
+	const struct sof_ipc_tplg_ops *ipc_tplg_ops;
 	struct snd_sof_widget *swidget = widget->dobj.private;
 	struct snd_soc_dapm_path *p;
 	int ret;
 
-	if (!swidget || !widget_ops[widget->id].ipc_prepare || swidget->prepared)
+	if (sdev->ipc) {
+		ipc_tplg_ops = sdev->ipc->ops->tplg;
+		widget_ops = ipc_tplg_ops->widget;
+	}
+
+	if (!swidget || !widget_ops || !widget_ops[widget->id].ipc_prepare || swidget->prepared)
 		goto sink_prepare;
 
 	/* prepare the source widget */
@@ -492,10 +502,13 @@ int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 			  struct snd_sof_platform_stream_params *platform_params,
 			  int dir)
 {
-	const struct sof_ipc_tplg_ops *ipc_tplg_ops = sdev->ipc->ops->tplg;
+	const struct sof_ipc_tplg_ops *ipc_tplg_ops = NULL;
 	struct snd_soc_dapm_widget_list *list = spcm->stream[dir].list;
 	struct snd_soc_dapm_widget *widget;
 	int i, ret;
+
+	if (sdev->ipc)
+		ipc_tplg_ops = sdev->ipc->ops->tplg;
 
 	/* nothing to set up */
 	if (!list)
@@ -546,7 +559,7 @@ int sof_widget_list_setup(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 		if (pipe_widget->complete)
 			continue;
 
-		if (ipc_tplg_ops->pipeline_complete) {
+		if (ipc_tplg_ops && ipc_tplg_ops->pipeline_complete) {
 			pipe_widget->complete = ipc_tplg_ops->pipeline_complete(sdev, pipe_widget);
 			if (pipe_widget->complete < 0) {
 				ret = pipe_widget->complete;
@@ -635,11 +648,14 @@ bool snd_sof_stream_suspend_ignored(struct snd_sof_dev *sdev)
 int sof_pcm_stream_free(struct snd_sof_dev *sdev, struct snd_pcm_substream *substream,
 			struct snd_sof_pcm *spcm, int dir, bool free_widget_list)
 {
-	const struct sof_ipc_pcm_ops *pcm_ops = sdev->ipc->ops->pcm;
+	const struct sof_ipc_pcm_ops *pcm_ops = NULL;
 	int ret;
 
+	if (sdev->ipc)
+		pcm_ops = sdev->ipc->ops->pcm;
+
 	/* Send PCM_FREE IPC to reset pipeline */
-	if (pcm_ops->hw_free && spcm->prepared[substream->stream]) {
+	if (pcm_ops && pcm_ops->hw_free && spcm->prepared[substream->stream]) {
 		ret = pcm_ops->hw_free(sdev->component, substream);
 		if (ret < 0)
 			return ret;
