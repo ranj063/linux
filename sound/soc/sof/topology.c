@@ -1163,7 +1163,12 @@ static void sof_disconnect_dai_widget(struct snd_soc_component *scomp,
 static int spcm_bind(struct snd_soc_component *scomp, struct snd_sof_pcm *spcm,
 		     int dir)
 {
+	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
 	struct snd_sof_widget *host_widget;
+
+	/* no need to bind PCM with host comp with DSP-less mode */
+	if (!sdev->ipc)
+		return 0;
 
 	host_widget = snd_sof_find_swidget_sname(scomp,
 						 spcm->pcm.caps[dir].name,
@@ -2222,6 +2227,68 @@ static struct snd_soc_tplg_ops sof_tplg_ops = {
 	.bytes_ext_ops_count	= ARRAY_SIZE(sof_bytes_ext_ops),
 };
 
+/* Kcontrols IO. The no_ipc ops are required to successfully load the kcontrols in topology */
+static int snd_sof_volume_get_no_ipc(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+static int snd_sof_volume_put_no_ipc(struct snd_kcontrol *kcontrol,
+				     struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+
+static const struct snd_soc_tplg_kcontrol_ops sof_io_ops_no_ipc[] = {
+	{SOF_TPLG_KCTL_VOL_ID, snd_sof_volume_get_no_ipc, snd_sof_volume_put_no_ipc},
+};
+
+/* external widget init - used for any driver specific init */
+static int sof_widget_ready_no_ipc(struct snd_soc_component *scomp, int index,
+				   struct snd_soc_dapm_widget *w,
+				   struct snd_soc_tplg_dapm_widget *tw)
+{
+	struct snd_sof_dai *dai;
+	int ret = 0;
+
+	if (WIDGET_IS_DAI(w->id)) {
+		dai = kzalloc(sizeof(*dai), GFP_KERNEL);
+		if (!dai)
+			return -ENOMEM;
+
+		ret = sof_connect_dai_widget(scomp, w, tw, dai);
+		kfree(dai);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int sof_widget_unload_no_ipc(struct snd_soc_component *scomp,
+			     struct snd_soc_dobj *dobj)
+{
+	struct snd_soc_dapm_widget *w = container_of(dobj, struct snd_soc_dapm_widget, dobj);
+
+	if (WIDGET_IS_DAI(w->id))
+		sof_disconnect_dai_widget(scomp, w);
+
+	return 0;
+}
+
+static struct snd_soc_tplg_ops sof_tplg_ops_no_ipc = {
+	/* external widget init - used for any driver specific init */
+	.widget_ready	= sof_widget_ready_no_ipc,
+	.widget_unload	= sof_widget_unload_no_ipc,
+
+	/* FE DAI - used for any driver specific init */
+	.dai_load	= sof_dai_load,
+	.dai_unload	= sof_dai_unload,
+
+	/* vendor specific kcontrol handlers available for binding */
+	.io_ops		= sof_io_ops_no_ipc,
+	.io_ops_count	= ARRAY_SIZE(sof_io_ops_no_ipc),
+};
+
 int snd_sof_load_topology(struct snd_soc_component *scomp, const char *file)
 {
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(scomp);
@@ -2239,7 +2306,10 @@ int snd_sof_load_topology(struct snd_soc_component *scomp, const char *file)
 		return ret;
 	}
 
-	ret = snd_soc_tplg_component_load(scomp, &sof_tplg_ops, fw);
+	if (sdev->ipc)
+		ret = snd_soc_tplg_component_load(scomp, &sof_tplg_ops, fw);
+	else
+		ret = snd_soc_tplg_component_load(scomp, &sof_tplg_ops_no_ipc, fw);
 	if (ret < 0) {
 		dev_err(scomp->dev, "error: tplg component load failed %d\n",
 			ret);
