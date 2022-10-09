@@ -628,6 +628,9 @@ struct snd_sof_dev {
 	bool mclk_id_override;
 	u16  mclk_id_quirk; /* same size as in IPC3 definitions */
 
+	/* no DSP */
+	bool no_dsp;
+
 	void *private;			/* core does not touch this */
 };
 

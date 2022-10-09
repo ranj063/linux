@@ -130,6 +130,9 @@ int sof_register_clients(struct snd_sof_dev *sdev)
 {
 	int ret;
 
+	if (sdev->no_dsp)
+		return 0;
+
 	/* Register platform independent client devices */
 	ret = sof_register_ipc_flood_test(sdev);
 	if (ret) {

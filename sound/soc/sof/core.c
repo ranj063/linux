@@ -208,6 +208,9 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 	/* set up platform component driver */
 	snd_sof_new_platform_drv(sdev);
 
+	if (sdev->no_dsp)
+		goto comp_register;
+
 	/* register any debug/trace capabilities */
 	ret = snd_sof_dbg_init(sdev);
 	if (ret < 0) {
@@ -268,7 +271,7 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 
 	/* hereafter all FW boot flows are for PM reasons */
 	sdev->first_boot = false;
-
+comp_register:
 	/* now register audio DSP platform driver and dai */
 	ret = devm_snd_soc_register_component(sdev->dev, &sdev->plat_drv,
 					      sof_ops(sdev)->drv,
@@ -351,6 +354,9 @@ int snd_sof_device_probe(struct device *dev, struct snd_sof_pdata *plat_data)
 	sdev = devm_kzalloc(dev, sizeof(*sdev), GFP_KERNEL);
 	if (!sdev)
 		return -ENOMEM;
+
+	/* set no_dsp mode. FIXME: use module param for this */
+	sdev->no_dsp = true;
 
 	/* initialize sof device */
 	sdev->dev = dev;
