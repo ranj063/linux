@@ -1982,6 +1982,7 @@ static int sof_ipc4_link_setup(struct snd_sof_dev *sdev, struct snd_soc_dai_link
 	 * start FE, stop FE, stop BE; for Capture the sequence is
 	 * inverted start FE, start BE, stop BE, stop FE
 	 */
+	link->nonatomic = true;
 	link->trigger[SNDRV_PCM_STREAM_PLAYBACK] = SND_SOC_DPCM_TRIGGER_POST;
 	link->trigger[SNDRV_PCM_STREAM_CAPTURE] = SND_SOC_DPCM_TRIGGER_PRE;
 

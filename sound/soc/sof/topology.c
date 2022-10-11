@@ -1801,11 +1801,8 @@ static int sof_link_load(struct snd_soc_component *scomp, int index, struct snd_
 			return ret;
 	}
 
-	/* Set nonatomic property for FE dai links as their trigger action involves IPC's */
-	if (!link->no_pcm) {
-		link->nonatomic = true;
+	if (!link->no_pcm)
 		return 0;
-	}
 
 	/* check we have some tokens - we need at least DAI type */
 	if (le32_to_cpu(private->size) == 0) {
