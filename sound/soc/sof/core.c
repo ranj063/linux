@@ -456,6 +456,15 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 		goto ipc_err;
 	}
 
+	/*
+	 * skip loading/booting firmware and registering the machine driver when DSP OPS testing
+	 * is enabled. Normal audio operations will be unavailable in this mode.
+	 */
+	if (IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_DSP_OPS_TEST)) {
+		sdev->probe_completed = true;
+		return 0;
+	}
+
 	/* load the firmware */
 	ret = snd_sof_load_firmware(sdev);
 	if (ret < 0) {
@@ -592,7 +601,9 @@ int snd_sof_device_probe(struct device *dev, struct snd_sof_pdata *plat_data)
 	if (sof_core_debug)
 		dev_info(dev, "sof_debug value: %#x\n", sof_core_debug);
 
-	if (sof_debug_check_flag(SOF_DBG_DSPLESS_MODE)) {
+	/* select DSPless mode only when DSP OPS testing is not in use */
+	if (sof_debug_check_flag(SOF_DBG_DSPLESS_MODE) &&
+	    !IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_DSP_OPS_TEST)) {
 		if (plat_data->desc->dspless_mode_supported) {
 			dev_info(dev, "Switching to DSPless mode\n");
 			sdev->dspless_mode_selected = true;
