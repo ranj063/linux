@@ -263,18 +263,19 @@ int acp_sof_dsp_run(struct snd_sof_dev *sdev)
 }
 EXPORT_SYMBOL_NS(acp_sof_dsp_run, SND_SOC_SOF_AMD_COMMON);
 
-int acp_sof_load_signed_firmware(struct snd_sof_dev *sdev)
+int acp_sof_load_signed_firmware(struct snd_sof_dev *sdev, const char *fw_filename)
 {
 	struct snd_sof_pdata *plat_data = sdev->pdata;
 	struct acp_dev_data *adata = plat_data->hw_pdata;
-	const char *fw_filename;
 	int ret;
 
-	fw_filename = kasprintf(GFP_KERNEL, "%s/%s",
-				plat_data->fw_filename_prefix,
-				adata->fw_code_bin);
-	if (!fw_filename)
-		return -ENOMEM;
+	if (!fw_filename) {
+		fw_filename = kasprintf(GFP_KERNEL, "%s/%s",
+					plat_data->fw_filename_prefix,
+					adata->fw_code_bin);
+		if (!fw_filename)
+			return -ENOMEM;
+	}
 
 	ret = request_firmware(&sdev->basefw.fw, fw_filename, sdev->dev);
 	if (ret < 0) {
