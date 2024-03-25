@@ -112,6 +112,38 @@ static ssize_t sof_dsp_ops_tester_dfs_read(struct file *file, char __user *buffe
 		default:
 			break;
 		}
+	} else if (!strcmp(dentry->d_name.name, "fw_state")) {
+		switch (sdev->fw_state) {
+		case SOF_FW_BOOT_NOT_STARTED:
+			string = "NOT STARTED\n";
+			break;
+		case SOF_DSPLESS_MODE:
+			string = "DSPLESS MODE\n";
+			break;
+		case SOF_FW_BOOT_PREPARE:
+			string = "PREPARE\n";
+			break;
+		case SOF_FW_BOOT_IN_PROGRESS:
+			string = "IN PROGRESS\n";
+			break;
+		case SOF_FW_BOOT_FAILED:
+			string = "FAILED\n";
+			break;
+		case SOF_FW_BOOT_READY_FAILED:
+			string = "READY FAILED\n";
+			break;
+		case SOF_FW_BOOT_READY_OK:
+			string = "READY OK\n";
+			break;
+		case SOF_FW_BOOT_COMPLETE:
+			string = "COMPLETE\n";
+			break;
+		case SOF_FW_CRASHED:
+			string = "CRASHED\n";
+			break;
+		default:
+			break;
+		}
 	} else {
 		return 0;
 	}
@@ -236,5 +268,9 @@ int sof_dbg_dsp_ops_test_init(struct snd_sof_dev *sdev)
 	if (ret < 0)
 		return ret;
 
-	return sof_dsp_dsp_ops_create_dfse(sdev, "dsp_power_state", dsp_ops_debugfs, 0666);
+	ret = sof_dsp_dsp_ops_create_dfse(sdev, "dsp_power_state", dsp_ops_debugfs, 0666);
+	if (ret < 0)
+		return ret;
+
+	return sof_dsp_dsp_ops_create_dfse(sdev, "fw_state", dsp_ops_debugfs, 0444);
 }
