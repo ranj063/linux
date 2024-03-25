@@ -8,6 +8,33 @@
 #include "sof-priv.h"
 #include "ops.h"
 
+static int sof_dsp_ops_boot_firmware(struct snd_sof_dev *sdev)
+{
+	const char *fw_filename;
+	int ret;
+
+	sdev->first_boot = true;
+
+	if (!sdev->test_profile.fw_path || !sdev->test_profile.fw_name) {
+		dev_dbg(sdev->dev, "Invalid firmware path or filename\n");
+		return -EINVAL;
+	}
+
+	fw_filename = kasprintf(GFP_KERNEL, "%s/%s", sdev->test_profile.fw_path,
+				sdev->test_profile.fw_name);
+
+	/* load firmware */
+	ret = snd_sof_load_firmware(sdev, fw_filename);
+	kfree(fw_filename);
+	if (ret < 0)
+		return ret;
+
+	/* boot firmware */
+	sof_set_fw_state(sdev, SOF_FW_BOOT_IN_PROGRESS);
+
+	return snd_sof_run_firmware(sdev);
+}
+
 static ssize_t sof_dsp_ops_tester_dfs_read(struct file *file, char __user *buffer,
 					   size_t count, loff_t *ppos)
 {
@@ -48,6 +75,9 @@ static ssize_t sof_dsp_ops_tester_dfs_write(struct file *file, const char __user
 	struct snd_sof_dev *sdev = dfse->sdev;
 	size_t size;
 	char *string;
+
+	if (!strcmp(dentry->d_name.name, "boot_fw"))
+		return sof_dsp_ops_boot_firmware(sdev);
 
 	if (strcmp(dentry->d_name.name, "fw_filename") &&
 	    strcmp(dentry->d_name.name, "fw_path"))
@@ -115,5 +145,9 @@ int sof_dbg_dsp_ops_test_init(struct snd_sof_dev *sdev)
 		return ret;
 
 	/* create debugfs entry for FW path */
-	return sof_dsp_dsp_ops_create_dfse(sdev, "fw_path", dsp_ops_debugfs, 0666);
+	ret = sof_dsp_dsp_ops_create_dfse(sdev, "fw_path", dsp_ops_debugfs, 0666);
+	if (ret < 0)
+		return ret;
+
+	return sof_dsp_dsp_ops_create_dfse(sdev, "boot_fw", dsp_ops_debugfs, 0222);
 }
