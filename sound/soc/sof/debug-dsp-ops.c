@@ -59,6 +59,12 @@ static int sof_dsp_ops_set_power_state(struct snd_sof_dev *sdev, char *state)
 	return 0;
 }
 
+static void sof_dsp_ops_unload_firmware(struct snd_sof_dev *sdev)
+{
+	if (sdev->basefw.fw)
+		snd_sof_fw_unload(sdev);
+}
+
 static int sof_dsp_ops_boot_firmware(struct snd_sof_dev *sdev)
 {
 	const char *fw_filename;
@@ -171,6 +177,11 @@ static ssize_t sof_dsp_ops_tester_dfs_write(struct file *file, const char __user
 	size_t size;
 	char *string;
 
+	if (!strcmp(dentry->d_name.name, "unload_fw")) {
+		sof_dsp_ops_unload_firmware(sdev);
+		return 0;
+	}
+
 	if (!strcmp(dentry->d_name.name, "boot_fw"))
 		return sof_dsp_ops_boot_firmware(sdev);
 
@@ -272,5 +283,9 @@ int sof_dbg_dsp_ops_test_init(struct snd_sof_dev *sdev)
 	if (ret < 0)
 		return ret;
 
-	return sof_dsp_dsp_ops_create_dfse(sdev, "fw_state", dsp_ops_debugfs, 0444);
+	ret = sof_dsp_dsp_ops_create_dfse(sdev, "fw_state", dsp_ops_debugfs, 0444);
+	if (ret < 0)
+		return ret;
+
+	return sof_dsp_dsp_ops_create_dfse(sdev, "unload_fw", dsp_ops_debugfs, 0222);
 }
