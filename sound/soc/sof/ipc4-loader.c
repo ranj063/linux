@@ -149,13 +149,21 @@ static size_t sof_ipc4_fw_parse_basefw_ext_man(struct snd_sof_dev *sdev)
 	ssize_t payload_offset;
 	int ret;
 
-	fw_lib = devm_kzalloc(sdev->dev, sizeof(*fw_lib), GFP_KERNEL);
+	if (IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_DSP_OPS_TEST))
+		fw_lib = kzalloc(sizeof(*fw_lib), GFP_KERNEL);		
+	else
+		fw_lib = devm_kzalloc(sdev->dev, sizeof(*fw_lib), GFP_KERNEL);
 	if (!fw_lib)
 		return -ENOMEM;
 
 	fw_lib->sof_fw.fw = sdev->basefw.fw;
 
 	payload_offset = sof_ipc4_fw_parse_ext_man(sdev, fw_lib);
+	if (IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_DSP_OPS_TEST)) {
+		kfree(fw_lib);
+		return payload_offset;
+	}
+
 	if (payload_offset > 0) {
 		fw_lib->sof_fw.payload_offset = payload_offset;
 

@@ -418,7 +418,13 @@ err_sof_probe:
 static int sof_probe_continue(struct snd_sof_dev *sdev)
 {
 	struct snd_sof_pdata *plat_data = sdev->pdata;
+	struct sof_dsp_power_state state = {
+                .state = SOF_DSP_PM_D3,
+        };
 	int ret;
+
+	/* set initial power state to D3 */
+	sdev->dsp_power_state = state;
 
 	/* Initialize loadable file paths and check the environment validity */
 	ret = sof_init_environment(sdev);

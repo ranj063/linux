@@ -18,6 +18,7 @@ int snd_sof_load_firmware_raw(struct snd_sof_dev *sdev, const char *fw_filename)
 {
 	struct snd_sof_pdata *plat_data = sdev->pdata;
 	ssize_t ext_man_size;
+	bool alloc = false;
 	int ret;
 
 	/* Don't request firmware again if firmware is already requested */
@@ -30,6 +31,7 @@ int snd_sof_load_firmware_raw(struct snd_sof_dev *sdev, const char *fw_filename)
 					plat_data->fw_filename);
 		if (!fw_filename)
 			return -ENOMEM;
+		alloc = true;
 	}
 
 	ret = request_firmware(&sdev->basefw.fw, fw_filename, sdev->dev);
@@ -60,7 +62,8 @@ int snd_sof_load_firmware_raw(struct snd_sof_dev *sdev, const char *fw_filename)
 	}
 
 err:
-	kfree(fw_filename);
+	if (alloc)
+		kfree(fw_filename);
 
 	return ret;
 }
@@ -109,6 +112,9 @@ EXPORT_SYMBOL(snd_sof_load_firmware_memcpy);
 
 int snd_sof_run_firmware(struct snd_sof_dev *sdev)
 {
+	struct sof_dsp_power_state state = {
+                .state = SOF_DSP_PM_D0,
+        };
 	int ret;
 
 	init_waitqueue_head(&sdev->boot_wait);
@@ -167,6 +173,12 @@ int snd_sof_run_firmware(struct snd_sof_dev *sdev)
 
 	dev_dbg(sdev->dev, "firmware boot complete\n");
 	sof_set_fw_state(sdev, SOF_FW_BOOT_COMPLETE);
+
+	/* set the DSP power state to D0 after successful firmware boot */
+	sdev->dsp_power_state = state;
+
+	if (IS_ENABLED(CONFIG_SND_SOC_SOF_DEBUG_DSP_OPS_TEST))
+		return 0;
 
 	/* perform post fw run operations */
 	ret = snd_sof_dsp_post_fw_run(sdev);
