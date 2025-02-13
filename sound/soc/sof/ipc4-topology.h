@@ -129,6 +129,7 @@ struct sof_ipc4_copier_config_set_sink_format {
  * @state: Pipeline state
  * @use_chain_dma: flag to indicate if the firmware shall use chained DMA
  * @msg: message structure for pipeline
+ * @skip_during_fe_trigger: skip triggering this pipeline during the FE DAI trigger
  */
 struct sof_ipc4_pipeline {
 	uint32_t priority;
@@ -138,6 +139,7 @@ struct sof_ipc4_pipeline {
 	int state;
 	bool use_chain_dma;
 	struct sof_ipc4_msg msg;
+	bool skip_during_fe_trigger;
 };
 
 /**
