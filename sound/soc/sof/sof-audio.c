@@ -277,6 +277,10 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 	    is_virtual_widget(sdev, sink_widget->widget, __func__))
 		return 0;
 
+	/* skip route if source/sink widget is not set up */
+	if (!src_widget->use_count || !sink_widget->use_count)
+		return 0;
+
 	/* find route matching source and sink widgets */
 	list_for_each_entry(sroute, &sdev->route_list, list)
 		if (sroute->src_widget == src_widget && sroute->sink_widget == sink_widget) {
@@ -291,7 +295,7 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 	}
 
 	/* nothing to do if route is already set up */
-	if (sroute->setup)
+	if (sroute->setup || !src_widget->use_count || !sink_widget->use_count)
 		return 0;
 
 	if (tplg_ops && tplg_ops->route_setup) {
@@ -417,7 +421,7 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 
 static void
 sof_unprepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *widget,
-			      struct snd_soc_dapm_widget_list *list)
+			      struct snd_soc_dapm_widget_list *list, int dir)
 {
 	const struct sof_ipc_tplg_ops *tplg_ops = sof_ipc_get_ops(sdev, tplg);
 	struct snd_sof_widget *swidget = widget->dobj.private;
@@ -427,9 +431,12 @@ sof_unprepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widg
 	if (is_virtual_widget(sdev, widget, __func__))
 		goto sink_unprepare;
 
-	/* skip aggregated DAIs */
-	if (!swidget || is_aggregated_dai(swidget))
+	if (!swidget)
 		return;
+
+	/* skip aggregated DAIs */
+	if(is_aggregated_dai(swidget))
+		goto sink_unprepare;
 
 	/* skip if the widget is in use or if it is already unprepared */
 	if (!swidget || !swidget->prepared || swidget->use_count > 0)
@@ -447,9 +454,12 @@ sink_unprepare:
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 		if (!widget_in_list(list, p->sink))
 			continue;
+		if (dir == SNDRV_PCM_STREAM_PLAYBACK &&
+				p->sink->id == snd_soc_dapm_aif_out)
+				    continue;
 		if (!p->walking && p->sink->dobj.private) {
 			p->walking = true;
-			sof_unprepare_widgets_in_path(sdev, p->sink, list);
+			sof_unprepare_widgets_in_path(sdev, p->sink, list, dir);
 			p->walking = false;
 		}
 	}
@@ -476,8 +486,11 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 		return 0;
 
 	/* skip aggregated DAIs */
-	if (!swidget || is_aggregated_dai(swidget))
+	if (!swidget)
 		return 0;
+
+	if(is_aggregated_dai(swidget))
+		goto sink_prepare;
 
 	if (!swidget || !widget_ops[widget->id].ipc_prepare || swidget->prepared)
 		goto sink_prepare;
@@ -497,6 +510,9 @@ sink_prepare:
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 		if (!widget_in_list(list, p->sink))
 			continue;
+		if (dir == SNDRV_PCM_STREAM_PLAYBACK && p->sink->id == snd_soc_dapm_aif_out)
+			    continue;
+
 		if (!p->walking && p->sink->dobj.private) {
 			p->walking = true;
 			ret = sof_prepare_widgets_in_path(sdev, p->sink,  fe_params,
@@ -537,8 +553,11 @@ static int sof_free_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dap
 	swidget = widget->dobj.private;
 
 	/* skip aggregated DAIs */
-	if (!swidget || is_aggregated_dai(swidget))
+	if (!swidget)
 		return 0;
+
+	if(is_aggregated_dai(swidget))
+		goto sink_free;
 
 	err = sof_widget_free(sdev, widget->dobj.private);
 	if (err < 0)
@@ -549,6 +568,10 @@ sink_free:
 		if (!p->walking) {
 			if (!widget_in_list(list, p->sink))
 				continue;
+
+			if (dir == SNDRV_PCM_STREAM_PLAYBACK &&
+				p->sink->id == snd_soc_dapm_aif_out)
+					continue;
 
 			p->walking = true;
 
@@ -584,8 +607,11 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 		int i;
 
 		/* skip aggregated DAIs */
-		if (!swidget || is_aggregated_dai(swidget))
+		if (!swidget)
 			return 0;
+
+		if(is_aggregated_dai(swidget))
+			goto sink_setup;
 
 		ret = sof_widget_setup(sdev, widget->dobj.private);
 		if (ret < 0)
@@ -616,6 +642,10 @@ sink_setup:
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 		if (!p->walking) {
 			if (!widget_in_list(list, p->sink))
+				continue;
+
+			if (dir == SNDRV_PCM_STREAM_PLAYBACK &&
+			    p->sink->id == snd_soc_dapm_aif_out)
 				continue;
 
 			p->walking = true;
@@ -656,7 +686,8 @@ sof_walk_widgets_in_order(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 			continue;
 
 		/* starting widget for capture is DAI type */
-		if (dir == SNDRV_PCM_STREAM_CAPTURE && widget->id != snd_soc_dapm_dai_out)
+		if (dir == SNDRV_PCM_STREAM_CAPTURE && widget->id != snd_soc_dapm_dai_out &&
+		    widget->id != snd_soc_dapm_output)
 			continue;
 
 		switch (op) {
@@ -686,7 +717,7 @@ sof_walk_widgets_in_order(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 			break;
 		}
 		case SOF_WIDGET_UNPREPARE:
-			sof_unprepare_widgets_in_path(sdev, widget, list);
+			sof_unprepare_widgets_in_path(sdev, widget, list, dir);
 			break;
 		default:
 			dev_err(sdev->dev, "Invalid widget op %d\n", op);
