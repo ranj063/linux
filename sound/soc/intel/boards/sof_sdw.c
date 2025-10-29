@@ -1164,6 +1164,28 @@ static int create_bt_dailinks(struct snd_soc_card *card,
 	return 0;
 }
 
+static int create_echoref_dailink(struct snd_soc_card *card,
+				  struct snd_soc_dai_link **dai_links, int *be_id)
+{
+	struct device *dev = card->dev;
+	int ret;
+	char *name = devm_kasprintf(dev, GFP_KERNEL, "EchoRef_virtual_DAI");
+
+	if (!name)
+		return -ENOMEM;
+
+	ret = asoc_sdw_init_simple_dai_link(dev, *dai_links, be_id, name,
+			0, 1, "snd-soc-dummy-dai", "dummy",
+			snd_soc_dummy_dlc.name, snd_soc_dummy_dlc.dai_name,
+			1, NULL, NULL);
+	if (ret)
+		return ret;
+
+	(*dai_links)++;
+
+	return 0;
+}
+
 static int sof_card_dai_links_create(struct snd_soc_card *card)
 {
 	struct device *dev = card->dev;
@@ -1262,7 +1284,7 @@ static int sof_card_dai_links_create(struct snd_soc_card *card)
 	}
 
 	/* allocate BE dailinks */
-	num_links = sdw_be_num + ssp_num + dmic_num + hdmi_num + bt_num;
+	num_links = sdw_be_num + ssp_num + dmic_num + hdmi_num + bt_num + 1;
 	dai_links = devm_kcalloc(dev, num_links, sizeof(*dai_links), GFP_KERNEL);
 	if (!dai_links) {
 		ret = -ENOMEM;
@@ -1307,6 +1329,13 @@ static int sof_card_dai_links_create(struct snd_soc_card *card)
 		ret = create_bt_dailinks(card, &dai_links, &be_id);
 		if (ret)
 			goto err_end;
+	}
+
+	/* dummy echo ref link */
+	ret = create_echoref_dailink(card, &dai_links, &be_id);
+	if (ret) {
+		dev_err(dev, "failed to create echo ref dai link: %d\n", ret);
+		goto err_end;
 	}
 
 	WARN_ON(codec_conf != card->codec_conf + card->num_configs);
