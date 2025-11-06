@@ -76,6 +76,8 @@ static const struct sof_topology_token ipc4_sched_tokens[] = {
 		offsetof(struct sof_ipc4_pipeline, core_id)},
 	{SOF_TKN_SCHED_PRIORITY, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
 		offsetof(struct sof_ipc4_pipeline, priority)},
+	{SOF_TKN_SCHED_DIRECTION, SND_SOC_TPLG_TUPLE_TYPE_WORD, get_token_u32,
+		offsetof(struct sof_ipc4_pipeline, direction)},
 };
 
 static const struct sof_topology_token pipeline_tokens[] = {
@@ -939,6 +941,7 @@ static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
 
 	swidget->core = pipeline->core_id;
 	spipe->core_mask |= BIT(pipeline->core_id);
+	spipe->direction = pipeline->direction;
 
 	if (pipeline->use_chain_dma) {
 		dev_dbg(scomp->dev, "Set up chain DMA for %s\n", swidget->widget->name);
@@ -954,9 +957,9 @@ static int sof_ipc4_widget_setup_comp_pipeline(struct snd_sof_widget *swidget)
 		goto err;
 	}
 
-	dev_dbg(scomp->dev, "pipeline '%s': id %d, pri %d, core_id %u, lp mode %d\n",
+	dev_dbg(scomp->dev, "pipeline '%s': id %d, pri %d, core_id %u, lp mode %d direction %d\n",
 		swidget->widget->name, swidget->pipeline_id,
-		pipeline->priority, pipeline->core_id, pipeline->lp_mode);
+		pipeline->priority, pipeline->core_id, pipeline->lp_mode, pipeline->direction);
 
 	swidget->private = pipeline;
 
@@ -1361,7 +1364,7 @@ sof_ipc4_update_resource_usage(struct snd_sof_dev *sdev, struct snd_sof_widget *
 
 	/* set pipeline direction */
 	pipeline->msg.extension |= SOF_IPC4_GLB_PIPE_EXT_DIRECTION_SET(0x1);
-	pipeline->msg.extension |= SOF_IPC4_GLB_PIPE_EXT_DIRECTION(dir);
+	pipeline->msg.extension |= SOF_IPC4_GLB_PIPE_EXT_DIRECTION(pipeline->direction);
 
 	/* Update base_config->cpc from the module manifest */
 	sof_ipc4_update_cpc_from_manifest(sdev, fw_module, base_config);
@@ -2808,12 +2811,16 @@ static int sof_ipc4_prepare_process_module(struct snd_sof_widget *swidget,
 	int input_fmt_index = 0;
 	int ret;
 
-	input_fmt_index = sof_ipc4_init_input_audio_fmt(sdev, swidget,
-							&process->base_config,
-							pipeline_params,
-							available_fmt);
-	if (input_fmt_index < 0)
-		return input_fmt_index;
+	if (available_fmt->num_input_formats) {
+		input_fmt_index = sof_ipc4_init_input_audio_fmt(sdev, swidget,
+								&process->base_config,
+								pipeline_params,
+								available_fmt);
+		if (input_fmt_index < 0)
+			return input_fmt_index;
+	}
+
+	dev_dbg(sdev->dev, "configuring output format\n");
 
 	/* Configure output audio format only if the module supports output */
 	if (available_fmt->num_output_formats) {
@@ -2822,12 +2829,26 @@ static int sof_ipc4_prepare_process_module(struct snd_sof_widget *swidget,
 		u32 out_ref_rate, out_ref_channels;
 		int out_ref_valid_bits, out_ref_type;
 
-		in_fmt = &available_fmt->input_pin_fmts[input_fmt_index].audio_fmt;
+		if (available_fmt->num_input_formats) {
+			in_fmt = &available_fmt->input_pin_fmts[input_fmt_index].audio_fmt;
 
-		out_ref_rate = in_fmt->sampling_frequency;
-		out_ref_channels = SOF_IPC4_AUDIO_FORMAT_CFG_CHANNELS_COUNT(in_fmt->fmt_cfg);
-		out_ref_valid_bits = SOF_IPC4_AUDIO_FORMAT_CFG_V_BIT_DEPTH(in_fmt->fmt_cfg);
-		out_ref_type = sof_ipc4_fmt_cfg_to_type(in_fmt->fmt_cfg);
+			out_ref_rate = in_fmt->sampling_frequency;
+			out_ref_channels = SOF_IPC4_AUDIO_FORMAT_CFG_CHANNELS_COUNT(in_fmt->fmt_cfg);
+			out_ref_valid_bits = SOF_IPC4_AUDIO_FORMAT_CFG_V_BIT_DEPTH(in_fmt->fmt_cfg);
+			out_ref_type = sof_ipc4_fmt_cfg_to_type(in_fmt->fmt_cfg);
+		} else {
+			/* for modules without input formats, use FE params as reference */
+			out_ref_rate = params_rate(fe_params);
+			out_ref_channels = params_channels(fe_params);
+			ret = sof_ipc4_get_sample_type(sdev, fe_params);
+			if (ret < 0)
+				return ret;
+			out_ref_type = (u32)ret;
+
+			out_ref_valid_bits = sof_ipc4_get_valid_bits(sdev, fe_params);
+			if (out_ref_valid_bits < 0)
+				return out_ref_valid_bits;
+		}
 
 		output_fmt_index = sof_ipc4_init_output_audio_fmt(sdev, swidget,
 								  &process->base_config,
@@ -2838,6 +2859,8 @@ static int sof_ipc4_prepare_process_module(struct snd_sof_widget *swidget,
 								  out_ref_type);
 		if (output_fmt_index < 0)
 			return output_fmt_index;
+
+		dev_dbg(sdev->dev, "selected output format index %d\n", output_fmt_index);
 
 		pin_fmt = &available_fmt->output_pin_fmts[output_fmt_index];
 
@@ -2854,6 +2877,18 @@ static int sof_ipc4_prepare_process_module(struct snd_sof_widget *swidget,
 							BIT(SNDRV_PCM_HW_PARAM_RATE));
 			if (ret)
 				return ret;
+		}
+
+		/* set base cfg to match the first output format if there are not input formats*/
+		if (!available_fmt->num_input_formats) {
+			struct sof_ipc4_audio_format *out_fmt;
+
+			out_fmt = &available_fmt->output_pin_fmts[0].audio_fmt;
+
+			dev_dbg(sdev->dev, "configuring basecfg audio format\n");
+
+			/* copy output format */
+			memcpy(&process->base_config.audio_fmt, out_fmt, sizeof(*out_fmt));
 		}
 	}
 

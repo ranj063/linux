@@ -2185,6 +2185,8 @@ static int sof_set_widget_pipeline(struct snd_sof_dev *sdev, struct snd_sof_pipe
 	swidget->spipe = spipe;
 	swidget->dynamic_pipeline_widget = pipe_widget->dynamic_pipeline_widget;
 
+	dev_dbg(sdev->dev, "updated spipe for widget %s to pipe %d direction %d \n",
+		swidget->widget->name, spipe->pipe_widget->pipeline_id, spipe->direction);
 	return 0;
 }
 
