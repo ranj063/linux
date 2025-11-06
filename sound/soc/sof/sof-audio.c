@@ -277,6 +277,9 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 	    is_virtual_widget(sdev, sink_widget->widget, __func__))
 		return 0;
 
+	dev_dbg(sdev->dev, "%s: setting up SOF route for source %d -> sink %d \n",
+		__func__,src_widget->use_count, src_widget->use_count);
+
 	/* skip route if source/sink widget is not set up */
 	if (!src_widget->use_count || !sink_widget->use_count)
 		return 0;
@@ -295,7 +298,7 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 	}
 
 	/* nothing to do if route is already set up */
-	if (sroute->setup || !src_widget->use_count || !sink_widget->use_count)
+	if (sroute->setup)
 		return 0;
 
 	if (tplg_ops && tplg_ops->route_setup) {
@@ -309,10 +312,10 @@ int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsourc
 	return 0;
 }
 
+static bool sof_widget_in_same_direction(struct snd_sof_widget *swidget, int dir);
 static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 					  struct snd_soc_dapm_widget_list *list, int dir)
 {
-	const struct sof_ipc_tplg_ops *tplg_ops = sof_ipc_get_ops(sdev, tplg);
 	struct snd_soc_dapm_widget *widget;
 	struct snd_sof_route *sroute;
 	struct snd_soc_dapm_path *p;
@@ -327,14 +330,22 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 	 */
 	if (dir == SNDRV_PCM_STREAM_PLAYBACK) {
 		for_each_dapm_widgets(list, i, widget) {
+			struct snd_sof_widget *src_widget, *sink_widget;
+
 			if (!widget->dobj.private)
 				continue;
 
 			snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 				if (!widget_in_list(list, p->sink))
 					continue;
+				src_widget = widget->dobj.private;
 
 				if (p->sink->dobj.private) {
+					sink_widget = p->sink->dobj.private;
+
+					/* skip if source and sink are in different directions. These will be set up later */
+					if (!sof_widget_in_same_direction(sink_widget, src_widget->spipe->direction))
+						continue;
 					ret = sof_route_setup(sdev, widget, p->sink);
 					if (ret < 0)
 						return ret;
@@ -343,6 +354,8 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 		}
 	} else {
 		for_each_dapm_widgets(list, i, widget) {
+			struct snd_sof_widget *src_widget, *sink_widget;
+
 			if (!widget->dobj.private)
 				continue;
 
@@ -350,7 +363,15 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 				if (!widget_in_list(list, p->source))
 					continue;
 
+				sink_widget = widget->dobj.private;
+
 				if (p->source->dobj.private) {
+					src_widget = p->source->dobj.private;
+
+					/* skip if source and sink are in different directions. These will be set up later */
+					if (!sof_widget_in_same_direction(sink_widget, src_widget->spipe->direction))
+						continue;
+			
 					ret = sof_route_setup(sdev, p->source, widget);
 					if (ret < 0)
 						return ret;
@@ -367,7 +388,6 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 	 */
 	list_for_each_entry(sroute, &sdev->route_list, list) {
 		bool src_widget_in_dapm_list, sink_widget_in_dapm_list;
-		struct snd_sof_widget *swidget;
 
 		if (sroute->setup)
 			continue;
@@ -380,43 +400,35 @@ static int sof_setup_pipeline_connections(struct snd_sof_dev *sdev,
 		 * set up above. And if neither are in the DAPM list, the route shouldn't be
 		 * handled now.
 		 */
-		if (src_widget_in_dapm_list == sink_widget_in_dapm_list)
+		if (!src_widget_in_dapm_list && !sink_widget_in_dapm_list)
 			continue;
 
-		/*
-		 * At this point either the source widget or the sink widget is in the DAPM list
-		 * with a route that might need to be set up. Check the use_count of the widget
-		 * that is not in the DAPM list to confirm if it is in use currently before setting
-		 * up the route.
-		 */
-		if (src_widget_in_dapm_list)
-			swidget = sroute->sink_widget;
-		else
-			swidget = sroute->src_widget;
+		if (src_widget_in_dapm_list && sink_widget_in_dapm_list) {
+			struct snd_sof_widget *src_widget, *sink_widget;
 
-		mutex_lock(&swidget->setup_mutex);
-		if (!swidget->use_count) {
-			mutex_unlock(&swidget->setup_mutex);
-			continue;
+			src_widget = sroute->src_widget->widget->dobj.private;
+			sink_widget = sroute->sink_widget->widget->dobj.private;
+
+			if (src_widget && sink_widget && sof_widget_in_same_direction(sink_widget, src_widget->spipe->direction))
+				continue;
 		}
 
-		if (tplg_ops && tplg_ops->route_setup) {
-			/*
-			 * this route will get freed when either the source widget or the sink
-			 * widget is freed during hw_free
-			 */
-			ret = tplg_ops->route_setup(sdev, sroute);
-			if (!ret)
-				sroute->setup = true;
-		}
-
-		mutex_unlock(&swidget->setup_mutex);
+		ret = sof_route_setup(sdev, sroute->src_widget->widget,
+				     sroute->sink_widget->widget);
 
 		if (ret < 0)
 			return ret;
 	}
 
 	return 0;
+}
+
+static bool sof_widget_in_same_direction(struct snd_sof_widget *swidget, int dir)
+{
+	if (swidget->spipe->direction == dir)
+		return true;
+
+	return false;
 }
 
 static void
@@ -431,8 +443,11 @@ sof_unprepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widg
 	if (is_virtual_widget(sdev, widget, __func__))
 		goto sink_unprepare;
 
-	if (!swidget)
+	if (!swidget || !sof_widget_in_same_direction(swidget, dir)) {
+		dev_dbg(sdev->dev, "%s: %s direction not in same direction as dir %d, skip unprepare\n",
+			__func__, widget->name, dir);
 		return;
+	}
 
 	/* skip aggregated DAIs */
 	if(is_aggregated_dai(swidget))
@@ -454,9 +469,7 @@ sink_unprepare:
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 		if (!widget_in_list(list, p->sink))
 			continue;
-		if (dir == SNDRV_PCM_STREAM_PLAYBACK &&
-				p->sink->id == snd_soc_dapm_aif_out)
-				    continue;
+
 		if (!p->walking && p->sink->dobj.private) {
 			p->walking = true;
 			sof_unprepare_widgets_in_path(sdev, p->sink, list, dir);
@@ -478,6 +491,9 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 	struct snd_soc_dapm_path *p;
 	int ret;
 
+	dev_dbg(sdev->dev, "%s: preparing widget %s id %d\n",
+		__func__, widget->name, widget->id);
+
 	if (is_virtual_widget(sdev, widget, __func__))
 		goto sink_prepare;
 
@@ -485,10 +501,15 @@ sof_prepare_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget
 	if (!widget_ops)
 		return 0;
 
-	/* skip aggregated DAIs */
-	if (!swidget)
+	if (!swidget || !sof_widget_in_same_direction(swidget, dir)) {
+		if (swidget) {
+			dev_dbg(sdev->dev, "%s: %s direction %d not in same direction as stream dir %d, skip prepare\n",
+				__func__, widget->name, swidget->spipe->direction, dir);
+		}
 		return 0;
+	}
 
+	/* skip aggregated DAIs */
 	if(is_aggregated_dai(swidget))
 		goto sink_prepare;
 
@@ -510,8 +531,6 @@ sink_prepare:
 	snd_soc_dapm_widget_for_each_sink_path(widget, p) {
 		if (!widget_in_list(list, p->sink))
 			continue;
-		if (dir == SNDRV_PCM_STREAM_PLAYBACK && p->sink->id == snd_soc_dapm_aif_out)
-			    continue;
 
 		if (!p->walking && p->sink->dobj.private) {
 			p->walking = true;
@@ -553,7 +572,7 @@ static int sof_free_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_dap
 	swidget = widget->dobj.private;
 
 	/* skip aggregated DAIs */
-	if (!swidget)
+	if (!swidget || !sof_widget_in_same_direction(swidget, dir))
 		return 0;
 
 	if(is_aggregated_dai(swidget))
@@ -568,10 +587,6 @@ sink_free:
 		if (!p->walking) {
 			if (!widget_in_list(list, p->sink))
 				continue;
-
-			if (dir == SNDRV_PCM_STREAM_PLAYBACK &&
-				p->sink->id == snd_soc_dapm_aif_out)
-					continue;
 
 			p->walking = true;
 
@@ -607,7 +622,7 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 		int i;
 
 		/* skip aggregated DAIs */
-		if (!swidget)
+		if (!swidget || !sof_widget_in_same_direction(swidget, dir))
 			return 0;
 
 		if(is_aggregated_dai(swidget))
@@ -644,10 +659,6 @@ sink_setup:
 			if (!widget_in_list(list, p->sink))
 				continue;
 
-			if (dir == SNDRV_PCM_STREAM_PLAYBACK &&
-			    p->sink->id == snd_soc_dapm_aif_out)
-				continue;
-
 			p->walking = true;
 
 			ret = sof_set_up_widgets_in_path(sdev, p->sink, dir, spcm);
@@ -679,7 +690,7 @@ sof_walk_widgets_in_order(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 		return 0;
 
 	for_each_dapm_widgets(list, i, widget) {
-
+		dev_dbg(sdev->dev, "processing widget %s id %d\n", widget->name, widget->id);
 		/* starting widget for playback is of AIF or snd_soc_dapm_input type */
 		if (dir == SNDRV_PCM_STREAM_PLAYBACK && (widget->id != snd_soc_dapm_aif_in &&
 		    widget->id != snd_soc_dapm_input))
@@ -689,6 +700,8 @@ sof_walk_widgets_in_order(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 		if (dir == SNDRV_PCM_STREAM_CAPTURE && widget->id != snd_soc_dapm_dai_out &&
 		    widget->id != snd_soc_dapm_output)
 			continue;
+
+		dev_dbg(sdev->dev, "found source widget %s id %d\n", widget->name, widget->id);
 
 		switch (op) {
 		case SOF_WIDGET_SETUP:
@@ -737,6 +750,7 @@ int sof_widget_list_prepare(struct snd_sof_dev *sdev, struct snd_sof_pcm *spcm,
 			    struct snd_sof_platform_stream_params *platform_params,
 			    int dir)
 {
+	dev_dbg(sdev->dev, "prepare widget list for dir %d\n", dir);
 	/*
 	 * Prepare widgets for set up. The prepare step is used to allocate memory, assign
 	 * instance ID and pick the widget configuration based on the runtime PCM params.

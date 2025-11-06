@@ -160,6 +160,7 @@ struct sof_ipc4_pipeline {
 	bool use_chain_dma;
 	struct sof_ipc4_msg msg;
 	bool skip_during_fe_trigger;
+	uint32_t direction;
 };
 
 /**

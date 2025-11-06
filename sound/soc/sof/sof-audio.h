@@ -520,6 +520,7 @@ struct snd_sof_pipeline {
 	int complete;
 	unsigned long core_mask;
 	struct list_head list;
+	uint32_t direction;
 };
 
 /* ASoC SOF DAPM route */
