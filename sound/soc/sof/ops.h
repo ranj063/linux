@@ -448,6 +448,66 @@ snd_sof_pcm_platform_hw_params(struct snd_sof_dev *sdev,
 	return 0;
 }
 
+static inline int
+snd_sof_compress_platform_open(struct snd_sof_dev *sdev, struct snd_compr_stream *cstream)
+{
+	if (sof_ops(sdev) && sof_ops(sdev)->compress_open)
+		return sof_ops(sdev)->compress_open(sdev, cstream);
+
+	return 0;
+}
+
+/* disconnect pcm substream to a host stream */
+static inline int
+snd_sof_compress_platform_close(struct snd_sof_dev *sdev, struct snd_compr_stream *cstream)
+{
+	if (sof_ops(sdev) && sof_ops(sdev)->compress_close)
+		return sof_ops(sdev)->compress_close(sdev, cstream);
+
+	return 0;
+}
+
+/* host stream hw params */
+static inline int
+snd_sof_compress_platform_hw_params(struct snd_sof_dev *sdev, struct snd_compr_stream *cstream,
+				    struct snd_compr_params *params,
+				    struct snd_sof_platform_stream_params *platform_params)
+{
+	if (sof_ops(sdev) && sof_ops(sdev)->compress_hw_params)
+		return sof_ops(sdev)->compress_hw_params(sdev, cstream, params, platform_params);
+
+	return 0;
+}
+
+static inline int
+snd_sof_compress_platform_trigger(struct snd_sof_dev *sdev,
+				  struct snd_compr_stream *cstream, int cmd)
+{
+	if (sof_ops(sdev) && sof_ops(sdev)->compress_trigger)
+		return sof_ops(sdev)->compress_trigger(sdev, cstream, cmd);
+
+	return 0;
+}
+
+static inline snd_pcm_uframes_t
+snd_sof_compress_platform_pointer(struct snd_sof_dev *sdev, struct snd_compr_stream *cstream,
+				  struct snd_compr_tstamp64 *tstamp)
+{
+	if (sof_ops(sdev) && sof_ops(sdev)->compress_pointer)
+		return sof_ops(sdev)->compress_pointer(sdev, cstream, tstamp);
+
+	return 0;
+}
+
+static inline u64
+snd_sof_compress_get_dai_frame_counter(struct snd_sof_dev *sdev, struct snd_compr_stream *cstream)
+{
+	if (sof_ops(sdev) && sof_ops(sdev)->compress_get_dai_frame_counter)
+		return sof_ops(sdev)->compress_get_dai_frame_counter(sdev, cstream);
+
+	return 0;
+}
+
 /* host stream hw free */
 static inline int
 snd_sof_pcm_platform_hw_free(struct snd_sof_dev *sdev,
