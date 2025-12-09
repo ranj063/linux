@@ -50,6 +50,7 @@ config SND_SOC_SOF_OF_DEV
 
 config SND_SOC_SOF_COMPRESS
 	bool
+	default y
 	select SND_SOC_COMPRESS
 
 config SND_SOC_SOF_DEBUG_PROBES
