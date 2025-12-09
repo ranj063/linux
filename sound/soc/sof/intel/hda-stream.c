@@ -1213,6 +1213,44 @@ u64 hda_dsp_get_stream_llp(struct snd_sof_dev *sdev,
 EXPORT_SYMBOL_NS(hda_dsp_get_stream_llp, "SND_SOC_SOF_INTEL_HDA_COMMON");
 
 /**
+ * hda_dsp_compress_get_stream_llp - Retrieve the LLP (Linear Link Position) of the stream
+ * @sdev: SOF device
+ * @cstream: Compress stream
+ *
+ * Returns the raw Linear Link Position value
+ */
+u64 hda_dsp_compress_get_stream_llp(struct snd_sof_dev *sdev, struct snd_compr_stream *cstream)
+{
+	struct hdac_stream *hstream = cstream->runtime->private_data;
+	struct hdac_ext_stream *hext_stream = stream_to_hdac_ext_stream(hstream);
+	u32 llp_l, llp_u;
+
+	/* only applies if Link DMA is in use */
+	if (!hext_stream->link_locked)
+		return 0;
+	/*
+	* The pplc_addr have been calculated during probe in
+	* hda_dsp_stream_init():
+	* pplc_addr = sdev->bar[HDA_DSP_PP_BAR] +
+	*	       SOF_HDA_PPLC_BASE +
+	*	       SOF_HDA_PPLC_MULTI * total_stream +
+	*	       SOF_HDA_PPLC_INTERVAL * stream_index
+	*
+	* Use this pre-calculated address to avoid repeated re-calculation.
+	*/
+	llp_l = readl(hext_stream->pplc_addr + AZX_REG_PPLCLLPL);
+	llp_u = readl(hext_stream->pplc_addr + AZX_REG_PPLCLLPU);
+
+	/* Compensate the LLP counter with the saved offset */
+	if (hext_stream->pplcllpl || hext_stream->pplcllpu)
+		return merge_u64(llp_u, llp_l) -
+		       merge_u64(hext_stream->pplcllpu, hext_stream->pplcllpl);
+
+	return merge_u64(llp_u, llp_l);
+}
+EXPORT_SYMBOL_NS(hda_dsp_compress_get_stream_llp, "SND_SOC_SOF_INTEL_HDA_COMMON");
+
+/**
  * hda_dsp_get_stream_ldp - Retrieve the LDP (Linear DMA Position) of the stream
  * @sdev: SOF device
  * @component: ASoC component

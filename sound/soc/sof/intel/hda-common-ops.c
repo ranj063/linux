@@ -57,6 +57,13 @@ const struct snd_sof_dsp_ops sof_hda_common_ops = {
 	.pcm_pointer	= hda_dsp_pcm_pointer,
 	.pcm_ack	= hda_dsp_pcm_ack,
 
+	.compress_open = hda_dsp_compress_open,
+	.compress_hw_params = hda_dsp_compress_hw_params,
+	.compress_close = hda_dsp_compress_close,
+	.compress_trigger = hda_dsp_compress_trigger,
+	.compress_pointer = hda_dsp_compress_pointer,
+	.compress_get_dai_frame_counter = hda_dsp_compress_get_stream_llp,
+
 	.get_dai_frame_counter = hda_dsp_get_stream_llp,
 	.get_host_byte_counter = hda_dsp_get_stream_ldp,
 
