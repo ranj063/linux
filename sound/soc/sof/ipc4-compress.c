@@ -146,7 +146,7 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	channels_interval->max = 2;
 
 	rate_interval = hw_param_interval(&p, SNDRV_PCM_HW_PARAM_RATE);
-	rate_interval->min = rate_interval->max = 48000;
+	rate_interval->min = rate_interval->max = 8000;
 
 	spcm = snd_sof_find_spcm_dai(component, rtd);
 	if (!spcm)
