@@ -124,6 +124,7 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	const struct sof_ipc_tplg_ops *tplg_ops = sof_ipc_get_ops(sdev, tplg);
 	struct snd_compr_runtime *crtd = cstream->runtime;
 	struct snd_interval *channels_interval;
+	struct snd_compr_params *compr_params;
 	struct snd_soc_dapm_widget_list *list;
 	struct snd_interval *rate_interval;
 	struct snd_sof_widget *host_widget;
@@ -133,27 +134,34 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	int host_comp_id;
 	int ret;
 
-	/*
-	 * Force format, rate and channels and use PCM hw_params structure to
-	 * set up the pipelines. TODO: Should come from the codec params
-	 */
-
-	fmt = hw_param_mask(&p, SNDRV_PCM_HW_PARAM_FORMAT);
-	snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S32_LE);
-
-	channels_interval = hw_param_interval(&p, SNDRV_PCM_HW_PARAM_CHANNELS);
-	channels_interval->min = 2;
-	channels_interval->max = 2;
-
-	rate_interval = hw_param_interval(&p, SNDRV_PCM_HW_PARAM_RATE);
-	rate_interval->min = rate_interval->max = 8000;
-
 	spcm = snd_sof_find_spcm_dai(component, rtd);
 	if (!spcm)
 		return -EINVAL;
 
+	dev_dbg(component->dev, "codec_id: %u, rate: %u, ch in/out: %u/%u, format: %u/%u\n",
+		params->codec.id, params->codec.sample_rate, params->codec.ch_in,
+		params->codec.ch_out, params->codec.format, params->codec.pcm_format);
+
 	/* save the compress params */
-	memcpy(&spcm->compress_params[cstream->direction], params, sizeof(*params));
+	compr_params = &spcm->compress_params[cstream->direction];
+	memcpy(compr_params, params, sizeof(*params));
+
+	/*
+	 * Force format, rate and channels and use PCM hw_params structure to
+	 * set up the pipelines.
+	 */
+	fmt = hw_param_mask(&p, SNDRV_PCM_HW_PARAM_FORMAT);
+	/* The default format is S32_LE when it is not set for the codec */
+	if (!compr_params->codec.format)
+		compr_params->codec.format = SNDRV_PCM_FORMAT_S32_LE;
+	snd_mask_set_format(fmt, compr_params->codec.format);
+
+	channels_interval = hw_param_interval(&p, SNDRV_PCM_HW_PARAM_CHANNELS);
+	channels_interval->min = compr_params->codec.ch_out;
+	channels_interval->max = compr_params->codec.ch_out;
+
+	rate_interval = hw_param_interval(&p, SNDRV_PCM_HW_PARAM_RATE);
+	rate_interval->min = rate_interval->max = compr_params->codec.sample_rate;
 
 	cstream->dma_buffer.dev.type = SNDRV_DMA_TYPE_DEV_SG;
 	cstream->dma_buffer.dev.dev = sdev->dev;
@@ -162,12 +170,14 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	if (ret < 0)
 		return ret;
 
-	ret = snd_sof_compr_create_page_table(component, cstream, crtd->dma_area, crtd->dma_bytes);
+	ret = snd_sof_compr_create_page_table(component, cstream, crtd->dma_area,
+					      crtd->dma_bytes);
 	if (ret < 0)
 		return ret;
 
 	platform_params = &spcm->platform_params[cstream->direction];
-	ret = snd_sof_compress_platform_hw_params(sdev, cstream, params, platform_params);
+	ret = snd_sof_compress_platform_hw_params(sdev, cstream, compr_params,
+						  platform_params);
 	if (ret < 0) {
 		dev_err(component->dev, "platform compress hw params failed\n");
 		return ret;
