@@ -230,7 +230,8 @@ struct sof_ipc_tplg_ops {
 	int (*control_setup)(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol);
 	int (*control_free)(struct snd_sof_dev *sdev, struct snd_sof_control *scontrol);
 	int (*pipeline_complete)(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget);
-	int (*widget_setup)(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget);
+	int (*widget_setup)(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+			    struct snd_sof_pcm *spcm);
 	int (*widget_free)(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget);
 	int (*dai_config)(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
 			  unsigned int flags, struct snd_sof_dai_config_data *data);
@@ -361,6 +362,7 @@ struct snd_sof_pcm {
 	bool prepared[2]; /* PCM_PARAMS set successfully */
 	bool setup_done[2]; /* the setup of the SOF PCM device is done */
 	bool pending_stop[2]; /* only used if (!pcm_ops->platform_stop_during_hw_free) */
+	struct snd_compr_params compress_params[2]; /* applicable for compress devices */
 
 	/* Must be last - ends in a flex-array member. */
 	struct snd_soc_tplg_pcm pcm;
@@ -679,7 +681,8 @@ bool snd_sof_dsp_only_d0i3_compatible_stream_active(struct snd_sof_dev *sdev);
 int sof_machine_register(struct snd_sof_dev *sdev, void *pdata);
 void sof_machine_unregister(struct snd_sof_dev *sdev, void *pdata);
 
-int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget);
+int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+		     struct snd_sof_pcm *spcm);
 int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget);
 int sof_route_setup(struct snd_sof_dev *sdev, struct snd_soc_dapm_widget *wsource,
 		    struct snd_soc_dapm_widget *wsink);

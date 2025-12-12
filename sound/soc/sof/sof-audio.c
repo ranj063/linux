@@ -128,7 +128,8 @@ int sof_widget_free(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
 EXPORT_SYMBOL(sof_widget_free);
 
 static int sof_widget_setup_unlocked(struct snd_sof_dev *sdev,
-				     struct snd_sof_widget *swidget)
+				     struct snd_sof_widget *swidget,
+				     struct snd_sof_pcm *spcm)
 {
 	const struct sof_ipc_tplg_ops *tplg_ops = sof_ipc_get_ops(sdev, tplg);
 	struct snd_sof_pipeline *spipe = swidget->spipe;
@@ -160,7 +161,7 @@ static int sof_widget_setup_unlocked(struct snd_sof_dev *sdev,
 			goto use_count_dec;
 		}
 
-		ret = sof_widget_setup_unlocked(sdev, swidget->spipe->pipe_widget);
+		ret = sof_widget_setup_unlocked(sdev, swidget->spipe->pipe_widget, spcm);
 		if (ret < 0)
 			goto use_count_dec;
 	}
@@ -179,7 +180,7 @@ static int sof_widget_setup_unlocked(struct snd_sof_dev *sdev,
 
 	/* setup widget in the DSP */
 	if (tplg_ops && tplg_ops->widget_setup) {
-		ret = tplg_ops->widget_setup(sdev, swidget);
+		ret = tplg_ops->widget_setup(sdev, swidget, spcm);
 		if (ret < 0)
 			goto pipe_widget_free;
 	}
@@ -234,10 +235,11 @@ use_count_dec:
 	return ret;
 }
 
-int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
+int sof_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+		     struct snd_sof_pcm *spcm)
 {
 	guard(mutex)(&swidget->setup_mutex);
-	return sof_widget_setup_unlocked(sdev, swidget);
+	return sof_widget_setup_unlocked(sdev, swidget, spcm);
 }
 EXPORT_SYMBOL(sof_widget_setup);
 
@@ -546,7 +548,7 @@ static int sof_set_up_widgets_in_path(struct snd_sof_dev *sdev, struct snd_soc_d
 	if (swidget) {
 		int i;
 
-		ret = sof_widget_setup(sdev, widget->dobj.private);
+		ret = sof_widget_setup(sdev, widget->dobj.private, spcm);
 		if (ret < 0)
 			return ret;
 
