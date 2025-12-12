@@ -9,6 +9,7 @@
 #include <linux/bitfield.h>
 #include <linux/cleanup.h>
 #include <uapi/sound/sof/tokens.h>
+#include <sound/compress_params.h>
 #include <sound/pcm_params.h>
 #include <sound/sof/ext_manifest4.h>
 #include <sound/intel-nhlt.h>
@@ -3032,6 +3033,7 @@ static int sof_ipc4_control_setup(struct snd_sof_dev *sdev, struct snd_sof_contr
 static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 					     struct snd_sof_widget *swidget,
 					     struct sof_ipc4_msg *msg,
+					     struct snd_sof_pcm *spcm,
 					     void *ipc_data, u32 ipc_size,
 					     void **new_data)
 {
@@ -3043,10 +3045,12 @@ static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 	u32 ext_pos;
 
 	/* For the moment the only reason for adding init_ext_init payload is DP
-	 * memory data. If both stack and heap size are 0 (= use default), then
-	 * there is no need for init_ext_init payload.
+	 * memory data and codec params for decoder widgets. If both stack and
+	 * heap size are 0 (= use default) for non-decoder type widgets in the DP
+	 * domain, then there is no need for init_ext_init payload.
 	 */
-	if (swidget->comp_domain != SOF_COMP_DOMAIN_DP) {
+	if (swidget->comp_domain != SOF_COMP_DOMAIN_DP &&
+	    swidget->id != snd_soc_dapm_decoder) {
 		msg->extension &= ~SOF_IPC4_MOD_EXT_EXTENDED_INIT_MASK;
 		return 0;
 	}
@@ -3065,16 +3069,35 @@ static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 	/* Add dp_memory_data if comp_domain indicates DP */
 	if (swidget->comp_domain == SOF_COMP_DOMAIN_DP) {
 		hdr = (struct sof_ipc4_module_init_ext_object *)&payload[ext_pos];
-		hdr->header = SOF_IPC4_MOD_INIT_EXT_OBJ_LAST_MASK |
-			SOF_IPC4_MOD_INIT_EXT_OBJ_ID(SOF_IPC4_MOD_INIT_DATA_ID_DP_DATA) |
+		hdr->header = SOF_IPC4_MOD_INIT_EXT_OBJ_ID(SOF_IPC4_MOD_INIT_DATA_ID_DP_DATA) |
 			SOF_IPC4_MOD_INIT_EXT_OBJ_WORDS(DIV_ROUND_UP(sizeof(*dp_mem_data),
 								     sizeof(u32)));
+		/* Set LAST bit if no another object follows */
+		if (swidget->id != snd_soc_dapm_decoder)
+			hdr->header |= SOF_IPC4_MOD_INIT_EXT_OBJ_LAST_MASK;
 		ext_pos += DIV_ROUND_UP(sizeof(*hdr), sizeof(u32));
 		dp_mem_data = (struct sof_ipc4_mod_init_ext_dp_memory_data *)&payload[ext_pos];
 		dp_mem_data->domain_id = swidget->dp_domain_id;
 		dp_mem_data->stack_bytes = swidget->dp_stack_bytes;
 		dp_mem_data->heap_bytes = swidget->dp_heap_bytes;
 		ext_pos += DIV_ROUND_UP(sizeof(*dp_mem_data), sizeof(u32));
+	}
+
+	/* Add codec params for decoder type widgets */
+	if (swidget->id == snd_soc_dapm_decoder) {
+		dev_dbg(sdev->dev, "Adding codec params for decoder widget %s size %ld\n",
+			swidget->widget->name, sizeof(struct snd_codec));
+		hdr = (struct sof_ipc4_module_init_ext_object *)&payload[ext_pos];
+		hdr->header = SOF_IPC4_MOD_INIT_EXT_OBJ_LAST_MASK |
+			SOF_IPC4_MOD_INIT_EXT_OBJ_ID(SOF_IPC4_MOD_INIT_DATA_ID_MODULE_DATA) |
+			SOF_IPC4_MOD_INIT_EXT_OBJ_WORDS(DIV_ROUND_UP(sizeof(struct snd_codec),
+								     sizeof(u32)));
+		ext_pos += DIV_ROUND_UP(sizeof(*hdr), sizeof(u32));
+
+		/* decoder is always in the playback path */
+		memcpy(&payload[ext_pos], &spcm->compress_params[SNDRV_PCM_STREAM_PLAYBACK].codec,
+		       sizeof(struct snd_codec));
+		ext_pos += DIV_ROUND_UP(sizeof(struct snd_codec), sizeof(u32));
 	}
 
 	/* If another array object is added, remember clear previous OBJ_LAST bit */
@@ -3100,7 +3123,8 @@ static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 	return new_size;
 }
 
-static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
+static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+				 struct snd_sof_pcm *spcm)
 {
 	struct snd_sof_widget *pipe_widget = swidget->spipe->pipe_widget;
 	struct sof_ipc4_fw_data *ipc4_data = sdev->private;
@@ -3254,8 +3278,8 @@ static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 			swidget->widget->name, swidget->pipeline_id, module_id,
 			swidget->instance_id, swidget->core);
 
-		ret = sof_ipc4_widget_setup_msg_payload(sdev, swidget, msg, ipc_data, ipc_size,
-							&ext_data);
+		ret = sof_ipc4_widget_setup_msg_payload(sdev, swidget, msg, spcm, ipc_data,
+							ipc_size, &ext_data);
 		if (ret < 0)
 			goto fail;
 

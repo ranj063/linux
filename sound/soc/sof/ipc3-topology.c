@@ -2240,7 +2240,8 @@ static int sof_ipc3_dai_config(struct snd_sof_dev *sdev, struct snd_sof_widget *
 	return ret;
 }
 
-static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget)
+static int sof_ipc3_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget *swidget,
+				 struct snd_sof_pcm *spcm)
 {
 	int ret;
 
@@ -2325,7 +2326,7 @@ static int sof_ipc3_set_up_all_pipelines(struct snd_sof_dev *sdev, bool verify)
 				config->hda.link_dma_ch = DMA_CHAN_INVALID;
 		}
 
-		ret = sof_widget_setup(sdev, swidget);
+		ret = sof_widget_setup(sdev, swidget, NULL);
 		if (ret < 0)
 			return ret;
 	}
@@ -2362,7 +2363,7 @@ static int sof_ipc3_set_up_all_pipelines(struct snd_sof_dev *sdev, bool verify)
 				continue;
 
 			if (v->abi_version < SOF_ABI_VER(3, 19, 0)) {
-				ret = sof_widget_setup(sdev, swidget);
+				ret = sof_widget_setup(sdev, swidget, NULL);
 				if (ret < 0)
 					return ret;
 			}
