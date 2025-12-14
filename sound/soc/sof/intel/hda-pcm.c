@@ -167,8 +167,12 @@ int hda_dsp_compress_hw_params(struct snd_sof_dev *sdev,
 	hstream->cstream = cstream;
 	dmab = cstream->runtime->dma_buffer_p;
 
+	dev_dbg(sdev->dev, "compress hw_params: format: %d, rate: %d, ch: %d\n",
+		params->codec.format, params->codec.sample_rate,
+		params->codec.ch_out);
+
 	/* compr params do not store bit depth, default to S32_LE */
-	bps = snd_pcm_format_physical_width(params->codec.format);
+	bps = snd_pcm_format_physical_width(SNDRV_PCM_FORMAT_S32_LE);
 	if (bps < 0)
 		return bps;
 	bits = hda_dsp_get_bits(sdev, bps);
