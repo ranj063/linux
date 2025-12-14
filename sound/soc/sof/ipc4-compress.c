@@ -137,11 +137,13 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 		params->codec.id, params->codec.sample_rate, params->codec.ch_in,
 		params->codec.ch_out, params->codec.format);
 	/*
-	 * Force format, rate and channels and use PCM hw_params structure to
-	 * set up the pipelines. TODO: Should come from the codec params
+	 * Set format, rate and channels and use PCM hw_params structure to
+	 * set up the pipelines.
 	 */
 	fmt = hw_param_mask(&p, SNDRV_PCM_HW_PARAM_FORMAT);
-	snd_mask_set_format(fmt, params->codec.format);
+
+	/* FIx the format to 32-bit */
+	snd_mask_set_format(fmt, SNDRV_PCM_FORMAT_S32_LE);
 
 	channels_interval = hw_param_interval(&p, SNDRV_PCM_HW_PARAM_CHANNELS);
 	channels_interval->min = params->codec.ch_out;
@@ -153,6 +155,9 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	spcm = snd_sof_find_spcm_dai(component, rtd);
 	if (!spcm)
 		return -EINVAL;
+
+	/* save the compress params */
+	memcpy(&spcm->compress_params[cstream->direction], params, sizeof(*params));
 
 	cstream->dma_buffer.dev.type = SNDRV_DMA_TYPE_DEV_SG;
 	cstream->dma_buffer.dev.dev = sdev->dev;
