@@ -152,6 +152,9 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	if (!spcm)
 		return -EINVAL;
 
+	/* save the compress params */
+	memcpy(&spcm->compress_params[cstream->direction], params, sizeof(*params));
+
 	cstream->dma_buffer.dev.type = SNDRV_DMA_TYPE_DEV_SG;
 	cstream->dma_buffer.dev.dev = sdev->dev;
 
