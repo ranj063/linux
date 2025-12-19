@@ -10,6 +10,9 @@
 #include "sof-priv.h"
 #include "sof-utils.h"
 #include "ops.h"
+#include "ipc4-priv.h"
+#include "ipc4-topology.h"
+#include "ipc4-fw-reg.h"
 
 static int sof_ipc4_compr_open(struct snd_soc_component *component,
                                struct snd_compr_stream *cstream)
@@ -123,6 +126,7 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 	struct snd_sof_platform_stream_params *platform_params;
 	const struct sof_ipc_tplg_ops *tplg_ops = sof_ipc_get_ops(sdev, tplg);
 	struct snd_compr_runtime *crtd = cstream->runtime;
+	struct sof_ipc4_timestamp_info *time_info;
 	struct snd_interval *channels_interval;
 	struct snd_compr_params *compr_params;
 	struct snd_soc_dapm_widget_list *list;
@@ -223,6 +227,15 @@ static int sof_ipc4_compr_set_params(struct snd_soc_component *component,
 
 	memcpy(&spcm->params[cstream->direction], &p, sizeof(p));
 	spcm->prepared[cstream->direction] = true;
+
+	time_info = sof_ipc4_sps_to_time_info(&spcm->stream[cstream->direction]);
+	if (time_info) {
+		/* delay calculation supported */
+		time_info->stream_start_offset = SOF_IPC4_INVALID_STREAM_POSITION;
+		time_info->llp_offset = 0;
+
+		sof_ipc4_build_time_info(sdev, &spcm->stream[cstream->direction]);
+	}
 
 	return 0;
 }
@@ -354,14 +367,18 @@ static int sof_ipc4_compr_pointer(struct snd_soc_component *component,
 {
 	struct snd_sof_dev *sdev = snd_soc_component_get_drvdata(component);
 	struct snd_soc_pcm_runtime *rtd = cstream->private_data;
+	struct sof_ipc4_timestamp_info *time_info;
+	struct snd_pcm_hw_params *params;
+	struct snd_sof_pcm_stream *sps;
 	struct snd_sof_pcm *spcm;
+	u64 dai_cnt = 0;
 	int ret;
 
 	spcm = snd_sof_find_spcm_dai(component, rtd);
 	if (!spcm)
 		return -EINVAL;
 
-	struct snd_pcm_hw_params *params = &spcm->params[cstream->direction];
+	params = &spcm->params[cstream->direction];
 
 	ret = snd_sof_compress_platform_pointer(sdev, cstream, tstamp);
 	if (ret < 0) {
@@ -369,11 +386,43 @@ static int sof_ipc4_compr_pointer(struct snd_soc_component *component,
 		return ret;
 	}
 
-	tstamp->sampling_rate = params_rate(params);
+	sps = &spcm->stream[cstream->direction];
+	time_info = sof_ipc4_sps_to_time_info(sps);
+	if (!time_info)
+		goto host_only;
 
-	/* TODO: Get DAI position from Link DMA */
-	tstamp->pcm_io_frames = div_u64(spcm->stream[cstream->direction].posn.dai_posn,
-					params_channels(params) * params_physical_width(params));
+	/*
+	 * stream_start_offset is updated to memory window by FW based on
+	 * pipeline statistics and it may be invalid if host query happens before
+	 * the statistics is complete. And it will not change after the first initiailization.
+	 */
+	if (time_info->stream_start_offset == SOF_IPC4_INVALID_STREAM_POSITION) {
+		ret = sof_ipc4_get_stream_start_offset(sdev, NULL, sps, time_info);
+		if (ret < 0)
+			goto host_only;
+	}
+
+	if (!time_info->llp_offset) {
+		dai_cnt = snd_sof_compress_get_dai_frame_counter(sdev, cstream);
+	} else {
+		struct sof_ipc4_llp_reading_slot llp;
+
+		sof_mailbox_read(sdev, time_info->llp_offset, &llp, sizeof(llp));
+		dai_cnt = ((u64)llp.reading.llp_u << 32) | llp.reading.llp_l;
+	}
+
+	if (dai_cnt) {
+		dai_cnt = sof_ipc4_frames_dai_to_host(time_info, dai_cnt);
+		dai_cnt += time_info->stream_end_offset;
+		if (dai_cnt < time_info->stream_start_offset)
+			dai_cnt = 0;
+		else
+			dai_cnt -= time_info->stream_start_offset;
+	}
+
+host_only:
+	tstamp->sampling_rate = params_rate(params);
+	tstamp->pcm_io_frames = dai_cnt;
 
 	return 0;
 }
