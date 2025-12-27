@@ -1513,6 +1513,7 @@ static int sof_widget_ready(struct snd_soc_component *scomp, int index,
 		swidget->private = dai;
 		break;
 	case snd_soc_dapm_decoder:
+	case snd_soc_dapm_encoder:
 	case snd_soc_dapm_effect:
 		/* check we have some tokens - we need at least process type */
 		if (le32_to_cpu(tw->priv.size) == 0) {

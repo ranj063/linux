@@ -3059,12 +3059,13 @@ static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 	u32 ext_pos;
 
 	/* For the moment the only reason for adding init_ext_init payload is DP
-	 * memory data and codec params for decoder widgets. If both stack and
-	 * heap size are 0 (= use default) for non-decoder type widgets in the DP
+	 * memory data and codec params for decoder/encoder widgets. If both stack and
+	 * heap size are 0 (= use default) for non-decoder/encoder type widgets in the DP
 	 * domain, then there is no need for init_ext_init payload.
 	 */
 	if (swidget->comp_domain != SOF_COMP_DOMAIN_DP &&
-	    swidget->id != snd_soc_dapm_decoder) {
+	    swidget->id != snd_soc_dapm_decoder &&
+	    swidget->id != snd_soc_dapm_encoder) {
 		msg->extension &= ~SOF_IPC4_MOD_EXT_EXTENDED_INIT_MASK;
 		return 0;
 	}
@@ -3087,7 +3088,7 @@ static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 			SOF_IPC4_MOD_INIT_EXT_OBJ_WORDS(DIV_ROUND_UP(sizeof(*dp_mem_data),
 								     sizeof(u32)));
 		/* Set LAST bit if no another object follows */
-		if (swidget->id != snd_soc_dapm_decoder)
+		if (swidget->id != snd_soc_dapm_decoder && swidget->id != snd_soc_dapm_encoder)
 			hdr->header |= SOF_IPC4_MOD_INIT_EXT_OBJ_LAST_MASK;
 		ext_pos += DIV_ROUND_UP(sizeof(*hdr), sizeof(u32));
 		dp_mem_data = (struct sof_ipc4_mod_init_ext_dp_memory_data *)&payload[ext_pos];
@@ -3097,21 +3098,41 @@ static int sof_ipc4_widget_setup_msg_payload(struct snd_sof_dev *sdev,
 		ext_pos += DIV_ROUND_UP(sizeof(*dp_mem_data), sizeof(u32));
 	}
 
-	/* Add codec params for decoder type widgets */
-	if (swidget->id == snd_soc_dapm_decoder) {
-		dev_dbg(sdev->dev, "Adding codec params for decoder widget %s size %ld\n",
-			swidget->widget->name, sizeof(struct snd_codec));
+	/* Add codec params for decoder/encoder type widgets */
+	if (swidget->id == snd_soc_dapm_decoder || swidget->id == snd_soc_dapm_encoder) {
+		size_t codec_param_size = sizeof(struct snd_codec) + sizeof(u32);
+		u32 direction;
+
+		dev_dbg(sdev->dev, "Adding codec params for widget %s size %ld\n",
+			swidget->widget->name, codec_param_size);
 		hdr = (struct sof_ipc4_module_init_ext_object *)&payload[ext_pos];
 		hdr->header = SOF_IPC4_MOD_INIT_EXT_OBJ_LAST_MASK |
 			SOF_IPC4_MOD_INIT_EXT_OBJ_ID(SOF_IPC4_MOD_INIT_DATA_ID_MODULE_DATA) |
-			SOF_IPC4_MOD_INIT_EXT_OBJ_WORDS(DIV_ROUND_UP(sizeof(struct snd_codec),
+			SOF_IPC4_MOD_INIT_EXT_OBJ_WORDS(DIV_ROUND_UP(codec_param_size,
 								     sizeof(u32)));
 		ext_pos += DIV_ROUND_UP(sizeof(*hdr), sizeof(u32));
 
-		/* decoder is always in the playback path */
-		memcpy(&payload[ext_pos], &spcm->compress_params[SNDRV_PCM_STREAM_PLAYBACK].codec,
-		       sizeof(struct snd_codec));
+		switch (swidget->id) {
+		case snd_soc_dapm_decoder:
+			direction = SNDRV_PCM_STREAM_PLAYBACK;
+			memcpy(&payload[ext_pos],
+			       &spcm->compress_params[SNDRV_PCM_STREAM_PLAYBACK].codec,
+			       sizeof(struct snd_codec));
+			break;
+		case snd_soc_dapm_encoder:
+			direction = SNDRV_PCM_STREAM_CAPTURE;
+			memcpy(&payload[ext_pos],
+			       &spcm->compress_params[SNDRV_PCM_STREAM_CAPTURE].codec,
+			       sizeof(struct snd_codec));
+			break;
+		default:
+			break;
+		}
 		ext_pos += DIV_ROUND_UP(sizeof(struct snd_codec), sizeof(u32));
+
+		/* Add direction after codec params */
+		memcpy(&payload[ext_pos], &direction, sizeof(u32));
+		ext_pos += DIV_ROUND_UP(sizeof(u32), sizeof(u32));
 	}
 
 	/* If another array object is added, remember clear previous OBJ_LAST bit */
@@ -3248,6 +3269,7 @@ static int sof_ipc4_widget_setup(struct snd_sof_dev *sdev, struct snd_sof_widget
 		break;
 	}
 	case snd_soc_dapm_decoder:
+	case snd_soc_dapm_encoder:
 	case snd_soc_dapm_effect:
 	{
 		struct sof_ipc4_process *process = swidget->private;
@@ -4007,8 +4029,12 @@ static const struct sof_ipc_tplg_widget_ops tplg_ipc4_widget_ops[SND_SOC_DAPM_TY
 				process_token_list, ARRAY_SIZE(process_token_list),
 				NULL, sof_ipc4_prepare_process_module,
 				NULL},
-	/* for all practical purposes a decoder is like an effect type widget */
+	/* for all practical purposes a decoder/encoder is like an effect type widget */
 	[snd_soc_dapm_decoder] = {sof_ipc4_widget_setup_comp_process,
+				  sof_ipc4_widget_free_comp_process,
+				  process_token_list, ARRAY_SIZE(process_token_list),
+				  NULL, sof_ipc4_prepare_process_module, NULL},
+	[snd_soc_dapm_encoder] = {sof_ipc4_widget_setup_comp_process,
 				  sof_ipc4_widget_free_comp_process,
 				  process_token_list, ARRAY_SIZE(process_token_list),
 				  NULL, sof_ipc4_prepare_process_module, NULL},
