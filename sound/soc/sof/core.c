@@ -471,6 +471,10 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 
 	if (sdev->dspless_mode_selected) {
 		sof_set_fw_state(sdev, SOF_DSPLESS_MODE);
+
+		/* set up platform component driver */
+		snd_sof_new_platform_drv(sdev);
+
 		goto skip_dsp_init;
 	}
 
@@ -495,7 +499,7 @@ static int sof_probe_continue(struct snd_sof_dev *sdev)
 		goto ipc_err;
 	}
 
-	/* set up platform component driver */
+	/* set up platform component driver after initializing the IPC ops */
 	snd_sof_new_platform_drv(sdev);
 
 	/*
