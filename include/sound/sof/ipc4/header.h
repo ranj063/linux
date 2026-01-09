@@ -406,6 +406,7 @@ enum sof_ipc4_base_fw_params {
 	SOF_IPC4_FW_PARAM_LIBRARIES_INFO_GET = 16,
 	SOF_IPC4_FW_PARAM_SYSTEM_TIME = 20,
 	SOF_IPC4_FW_PARAM_MIC_PRIVACY_STATE_CHANGE = 35,
+	SOF_IPC4_FW_PARAM_GET_CODEC_CAPABILITIES = 37,
 };
 
 enum sof_ipc4_fw_config_params {
@@ -543,6 +544,15 @@ struct sof_ipc4_notify_resource_data {
 	uint32_t event_type;
 	uint32_t reserved;
 	uint32_t data[6];
+} __packed __aligned(4);
+
+
+#define SOF_IPC4_CODEC_CAPABILITIES_ID_MASK	0xFF
+#define SOF_IPC4_CODEC_CAPABILITIES_DIRECTION_SHIFT	16
+
+struct sof_ipc4_codec_caps_data {
+	u32 caps_count;
+	u32 caps_items[];
 } __packed __aligned(4);
 
 /*

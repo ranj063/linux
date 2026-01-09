@@ -3922,6 +3922,50 @@ static int sof_ipc4_link_setup(struct snd_sof_dev *sdev, struct snd_soc_dai_link
 	return 0;
 }
 
+static int sof_ipc4_complete(struct snd_sof_dev *sdev)
+{
+	struct sof_ipc4_fw_data *ipc4_data = sdev->private;
+	const struct sof_ipc_ops *iops = sdev->ipc->ops;
+	struct sof_ipc4_codec_caps_data *codec_caps_data;
+	struct sof_ipc4_codec_capability *codec_capabilities = ipc4_data->codec_capabilities;
+	struct sof_ipc4_msg msg;
+	int ret;
+
+	/* Get the codec capabilities */
+	msg.primary = SOF_IPC4_MSG_TARGET(SOF_IPC4_MODULE_MSG);
+	msg.primary |= SOF_IPC4_MSG_DIR(SOF_IPC4_MSG_REQUEST);
+	msg.primary |= SOF_IPC4_MOD_ID(SOF_IPC4_MOD_INIT_BASEFW_MOD_ID);
+	msg.primary |= SOF_IPC4_MOD_INSTANCE(SOF_IPC4_MOD_INIT_BASEFW_INSTANCE_ID);
+	msg.extension = SOF_IPC4_MOD_EXT_MSG_PARAM_ID(SOF_IPC4_FW_PARAM_GET_CODEC_CAPABILITIES);
+
+	msg.data_size = sdev->ipc->max_payload_size;
+	msg.data_ptr = kzalloc(msg.data_size, GFP_KERNEL);
+	if (!msg.data_ptr)
+		return -ENOMEM;
+
+	ret = iops->set_get_data(sdev, &msg, msg.data_size, false);
+	if (ret)
+		goto out;
+
+	codec_caps_data = msg.data_ptr;
+	dev_info(sdev->dev, "Number of codecs supported: %d\n", codec_caps_data->caps_count);
+	ipc4_data->num_codec_capabilities = codec_caps_data->caps_count;
+
+	for (int i = 0; i < codec_caps_data->caps_count; i++) {
+		codec_capabilities[i].codec_id =
+			codec_caps_data->caps_items[i] & SOF_IPC4_CODEC_CAPABILITIES_ID_MASK;
+		codec_capabilities[i].direction =
+			codec_caps_data->caps_items[i] >> SOF_IPC4_CODEC_CAPABILITIES_DIRECTION_SHIFT;
+
+		dev_info(sdev->dev, "Codec %d codec_id: %d: direction: %d\n", i,
+			 codec_capabilities[i].codec_id, codec_capabilities[i].direction);
+	}
+
+out:
+	kfree(msg.data_ptr);
+	return ret;
+}
+
 /* Tokens needed for different copier variants (aif, dai and buffer) */
 static enum sof_tokens copier_token_list[] = {
 	SOF_COMP_TOKENS,
@@ -4055,4 +4099,5 @@ const struct sof_ipc_tplg_ops ipc4_tplg_ops = {
 	.tear_down_all_pipelines = sof_ipc4_tear_down_all_pipelines,
 	.link_setup = sof_ipc4_link_setup,
 	.host_config = sof_ipc4_host_config,
+	.complete = sof_ipc4_complete,
 };

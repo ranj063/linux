@@ -2270,6 +2270,10 @@ static int sof_complete(struct snd_soc_component *scomp)
 		}
 	}
 
+	/* ipc-specific complete */
+	if(tplg_ops->complete)
+		return tplg_ops->complete(sdev);
+
 	/* set up static pipelines */
 	if (tplg_ops && tplg_ops->set_up_all_pipelines)
 		return tplg_ops->set_up_all_pipelines(sdev, false);

@@ -19,6 +19,8 @@
 #define SOF_IPC4_OUTBOX_WINDOW_IDX	1
 #define SOF_IPC4_DEBUG_WINDOW_IDX	2
 
+#define SOF_IPC4_MAX_CODEC_CAPABILITIES 32
+
 enum sof_ipc4_mtrace_type {
 	SOF_IPC4_MTRACE_NOT_AVAILABLE = 0,
 	SOF_IPC4_MTRACE_INTEL_CAVS_1_5,
@@ -59,6 +61,16 @@ struct sof_ipc4_fw_library {
 };
 
 /**
+ * struct sof_ipc4_codec_capability - IPC4 codec capability
+ * @codec_id: Codec ID (SND_AUDIOC0DEC_*)
+ * @direction: Codec direction (PLAYBACK/CAPTURE)
+ */
+struct sof_ipc4_codec_capability {
+	u32 codec_id;
+	u32 direction;
+};
+
+/**
  * struct sof_ipc4_fw_data - IPC4-specific data
  * @manifest_fw_hdr_offset: FW header offset in the manifest
  * @fw_lib_xa: XArray for firmware libraries, including basefw (ID = 0)
@@ -90,6 +102,9 @@ struct sof_ipc4_fw_data {
 	u32 max_libs_count;
 	bool fw_context_save;
 	bool libraries_restored;
+
+	int num_codec_capabilities;
+	struct sof_ipc4_codec_capability codec_capabilities[SOF_IPC4_MAX_CODEC_CAPABILITIES];
 
 	int (*load_library)(struct snd_sof_dev *sdev,
 			    struct sof_ipc4_fw_library *fw_lib, bool reload);
