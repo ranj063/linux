@@ -1757,14 +1757,48 @@ int hda_pci_intel_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 }
 EXPORT_SYMBOL_NS(hda_pci_intel_probe, "SND_SOC_SOF_INTEL_HDA_GENERIC");
 
+#if IS_ENABLED(CONFIG_SND_SOC_SOF_HDA_USB_OFFLOAD)
+static int hda_register_usb_offload(struct snd_sof_dev *sdev)
+{
+    return sof_client_dev_register(sdev, "usb-offload", 0, NULL, 0);
+}
+
+static void hda_unregister_usb_offload(struct snd_sof_dev *sdev)
+{
+    sof_client_dev_unregister(sdev, "usb-offload", 0);
+}
+#else
+static inline int hda_register_usb_offload(struct snd_sof_dev *sdev)
+{
+    return 0;
+}
+
+static inline void hda_unregister_usb_offload(struct snd_sof_dev *sdev) {}
+#endif
+
 int hda_register_clients(struct snd_sof_dev *sdev)
 {
-	return hda_probes_register(sdev);
+    int ret;
+
+    ret = hda_probes_register(sdev);
+    if (ret < 0)
+        return ret;
+
+    /* Register USB offload client */
+    ret = hda_register_usb_offload(sdev);
+    if (ret < 0) {
+        dev_err(sdev->dev, "failed to register USB offload client: %d\n", ret);
+        hda_probes_unregister(sdev);
+        return ret;
+    }
+
+    return 0;
 }
 
 void hda_unregister_clients(struct snd_sof_dev *sdev)
 {
-	hda_probes_unregister(sdev);
+    hda_unregister_usb_offload(sdev);
+    hda_probes_unregister(sdev);
 }
 
 MODULE_LICENSE("Dual BSD/GPL");

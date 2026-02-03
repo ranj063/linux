@@ -69,6 +69,27 @@ config SND_SOC_SOF_CLIENT
 	  This option is not user-selectable but automagically handled by
 	  'select' statements at a higher level.
 
+config SND_SOC_SOF_HDA_USB_OFFLOAD
+    tristate "SOF support for USB Audio offload"
+    depends on SND_SOC_SOF_INTEL_HDA_COMMON
+    depends on SND_USB_AUDIO
+    depends on USB_XHCI_SIDEBAND
+    select SND_SOC_SOF_CLIENT
+    select SND_SOC_USB
+    help
+      This option enables USB Audio offload support for Intel HDA DSP
+      platforms using Sound Open Firmware. USB Audio offload allows the
+      DSP to handle USB audio streaming, reducing CPU load and power
+      consumption.
+
+      This requires USB audio class driver (snd-usb-audio) and xHCI
+      sideband support to coordinate USB resources between the host
+      and DSP.
+
+      Say Y if you want to enable USB audio offload on Intel platforms
+      with SOF and have USB audio devices to offload.
+      If unsure select "N".
+
 config SND_SOC_SOF_DEVELOPER_SUPPORT
 	bool "SOF developer options support"
 	depends on EXPERT && SND_SOC_SOF

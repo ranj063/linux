@@ -55,6 +55,7 @@ obj-$(CONFIG_SND_SOC_SOF_DEBUG_IPC_MSG_INJECTOR) += snd-sof-ipc-msg-injector.o
 obj-$(CONFIG_SND_SOC_SOF_DEBUG_IPC_KERNEL_INJECTOR) += snd-sof-ipc-kernel-injector.o
 obj-$(CONFIG_SND_SOC_SOF_DEBUG_PROBES) += snd-sof-probes.o
 obj-$(CONFIG_SND_SOC_SOF_DEBUG_FW_GDB) += snd-sof-fw-gdb.o
+obj-$(CONFIG_SND_SOC_SOF_HDA_USB_OFFLOAD) += sof-client-usb.o
 
 obj-$(CONFIG_SND_SOC_SOF_INTEL_TOPLEVEL) += intel/
 obj-$(CONFIG_SND_SOC_SOF_IMX_TOPLEVEL) += imx/
