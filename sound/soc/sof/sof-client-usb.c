@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * SOF USB Audio Offload - Auxiliary Client Driver
- * Hooks into snd-usb-audio for discovery and enumeration only
+ * Hooks into snd-usb-audio for discovery and enumeration
  */
 
 #include <linux/auxiliary_bus.h>
@@ -12,19 +12,24 @@
 #include "../usb/usbaudio.h"
 #include "../usb/card.h"
 #include "sof-priv.h"
+#include "sof-client.h"
 
 struct sof_usb_priv {
     struct auxiliary_device *auxdev;
     struct snd_sof_dev *sdev;
     struct snd_usb_platform_ops ops;
-    struct snd_soc_usb *usb_port; /* Added for snd-soc-usb port */
+    struct snd_soc_usb *usb_port;
+    
+    /* Track if machine client is registered */
+    bool mach_registered;
+    struct mutex lock;
 };
 
 /* Helper to enumerate PCM devices from a USB audio chip */
 static void sof_usb_enumerate_pcm(struct snd_usb_audio *chip)
 {
     struct snd_usb_stream *stream;
-    struct device *dev = chip->dev; /* Use USB device, not card */
+    struct device *dev = chip->dev;
     
     dev_info(dev,
          "SOF USB: Enumerating USB audio chip %d\n",
@@ -70,10 +75,53 @@ static void sof_usb_enumerate_pcm(struct snd_usb_audio *chip)
     }
 }
 
+/* Register machine driver client device */
+static int sof_usb_register_machine(struct sof_usb_priv *priv,
+                    struct snd_usb_audio *chip)
+{
+    int ret;
+    
+    /* Store chip pointer for machine driver to access */
+    /* We'll use auxiliary device's platform data for this */
+    dev_set_drvdata(&priv->auxdev->dev, chip);
+    
+    ret = sof_client_dev_register(priv->sdev, "usb-mach", 0, NULL, 0);
+    if (ret < 0) {
+        dev_err(&priv->auxdev->dev,
+            "Failed to register USB machine client: %d\n", ret);
+        return ret;
+    }
+    
+    priv->mach_registered = true;
+    
+    dev_info(&priv->auxdev->dev,
+         "Registered USB offload machine client device\n");
+    
+    return 0;
+}
+
+/* Unregister machine driver client device */
+static void sof_usb_unregister_machine(struct sof_usb_priv *priv)
+{
+    if (!priv->mach_registered)
+        return;
+    
+    dev_info(&priv->auxdev->dev,
+         "Unregistering USB offload machine client device\n");
+    
+    sof_client_dev_unregister(priv->sdev, "usb-mach", 0);
+    priv->mach_registered = false;
+}
+
 /* Platform ops callback: USB audio device connected */
 static int sof_usb_connect_cb(struct snd_usb_audio *chip)
 {
-    struct device *dev = chip->dev; /* Use USB device */
+    struct sof_usb_priv *priv;
+    struct device *dev = chip->dev;
+    int ret;
+    
+    /* Get priv from platform ops */
+    priv = container_of(chip->platform_ops, struct sof_usb_priv, ops);
     
     dev_info(dev,
          "========================================\n");
@@ -84,25 +132,45 @@ static int sof_usb_connect_cb(struct snd_usb_audio *chip)
     
     sof_usb_enumerate_pcm(chip);
     
+    mutex_lock(&priv->lock);
+    
+    /* Register machine driver for this USB device */
+    ret = sof_usb_register_machine(priv, chip);
+    if (ret < 0)
+        dev_err(dev, "Failed to register machine driver: %d\n", ret);
+    
+    mutex_unlock(&priv->lock);
+    
     dev_info(dev,
          "========================================\n");
     
-    return 0;
+    return ret;
 }
 
 /* Platform ops callback: USB audio device disconnected */
 static void sof_usb_disconnect_cb(struct snd_usb_audio *chip)
 {
-    dev_info(chip->dev, /* Use chip->dev */
+    struct sof_usb_priv *priv;
+    
+    priv = container_of(chip->platform_ops, struct sof_usb_priv, ops);
+    
+    dev_info(chip->dev,
          "SOF USB: Device disconnected (chip index %d)\n",
          chip->index);
+    
+    mutex_lock(&priv->lock);
+    
+    /* Unregister machine driver */
+    sof_usb_unregister_machine(priv);
+    
+    mutex_unlock(&priv->lock);
 }
 
 /* Platform ops callback: USB audio device suspended */
 static void sof_usb_suspend_cb(struct snd_usb_audio *chip,
                    pm_message_t state)
 {
-    dev_dbg(chip->dev, /* Use chip->dev */
+    dev_dbg(chip->dev,
         "SOF USB: Device suspended (chip index %d)\n",
         chip->index);
 }
@@ -113,6 +181,7 @@ static int sof_usb_offload_probe(struct auxiliary_device *auxdev,
 {
     struct sof_usb_priv *priv;
     struct snd_sof_dev *sdev;
+    struct snd_soc_usb *usb_port;
     int ret;
     
     dev_info(&auxdev->dev, "SOF USB offload probing...\n");
@@ -130,6 +199,7 @@ static int sof_usb_offload_probe(struct auxiliary_device *auxdev,
     
     priv->auxdev = auxdev;
     priv->sdev = sdev;
+    mutex_init(&priv->lock);
     dev_set_drvdata(&auxdev->dev, priv);
     
     /* Set up platform ops for snd-usb-audio */
@@ -146,33 +216,32 @@ static int sof_usb_offload_probe(struct auxiliary_device *auxdev,
     }
     
     /* Register as a snd-soc-usb backend/port */
-    struct snd_soc_usb *usb_port;
-
-    usb_port = snd_soc_usb_allocate_port(NULL, priv); /* Pass your priv as priv_data */
+    usb_port = snd_soc_usb_allocate_port(NULL, priv);
     if (!usb_port) {
         dev_err(&auxdev->dev, "Failed to allocate snd-soc-usb port\n");
-        return -ENOMEM;
+        ret = -ENOMEM;
+        goto err_unreg_ops;
     }
-
-    /* Set up callbacks if needed (optional for now) */
-    // usb_port->connection_status_cb = sof_usb_connection_status_cb;
-
+    
     ret = snd_soc_usb_add_port(usb_port);
     if (ret < 0) {
         dev_err(&auxdev->dev, "Failed to add snd-soc-usb port: %d\n", ret);
         snd_soc_usb_free_port(usb_port);
-        return ret;
+        goto err_unreg_ops;
     }
-
-    priv->usb_port = usb_port; /* Store for cleanup */
+    
+    priv->usb_port = usb_port;
     
     /* Trigger re-discovery of already-connected USB audio devices */
     snd_usb_rediscover_devices();
     
-    dev_info(&auxdev->dev,
-         "SOF USB offload initialized (discovery only)\n");
+    dev_info(&auxdev->dev, "SOF USB offload initialized\n");
     
     return 0;
+
+err_unreg_ops:
+    snd_usb_unregister_platform_ops(&priv->ops);
+    return ret;
 }
 
 /* Auxiliary driver remove */
@@ -182,12 +251,21 @@ static void sof_usb_offload_remove(struct auxiliary_device *auxdev)
     
     dev_info(&auxdev->dev, "SOF USB offload removing...\n");
     
+    mutex_lock(&priv->lock);
+    
+    /* Unregister any active machine driver */
+    sof_usb_unregister_machine(priv);
+    
+    mutex_unlock(&priv->lock);
+    
+    /* Remove snd-soc-usb port */
+    if (priv->usb_port) {
+        snd_soc_usb_remove_port(priv->usb_port);
+        snd_soc_usb_free_port(priv->usb_port);
+    }
+    
     /* Unregister platform ops */
     snd_usb_unregister_platform_ops(&priv->ops);
-    
-    /* Free snd-soc-usb port if allocated */
-    if (priv->usb_port)
-        snd_soc_usb_free_port(priv->usb_port);
     
     dev_info(&auxdev->dev, "SOF USB offload removed\n");
 }
@@ -207,7 +285,7 @@ static struct auxiliary_driver sof_usb_offload_driver = {
 
 module_auxiliary_driver(sof_usb_offload_driver);
 
-MODULE_DESCRIPTION("SOF USB Audio Offload");
+MODULE_DESCRIPTION("SOF USB Audio Offload Client");
 MODULE_LICENSE("GPL");
 MODULE_IMPORT_NS("SND_SOC_SOF_CLIENT");
 MODULE_AUTHOR("Intel Corporation");
